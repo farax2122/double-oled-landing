@@ -3,8 +3,6 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-</head>
-<body>
 <title>Double OLED Monitor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,7 +26,7 @@
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { scroll-behavior: auto; }
+html { scroll-behavior: auto; scroll-padding-top: 96px; }
 body {
   background: var(--bg);
   color: var(--ink);
@@ -40,22 +38,74 @@ a { color: var(--accent); }
 p { margin: 0; }
 h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
 code { font-family: var(--mono); font-size: 0.86em; color: var(--ice); }
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+main:focus { outline: none; }
+
+/* Link per saltare al contenuto: visibile solo quando riceve il focus da tastiera */
+.skip {
+  position: fixed; left: 16px; top: -64px; z-index: 40;
+  padding: 12px 18px; border-radius: 999px; background: var(--ice); color: #06121c;
+  font: 600 15px/1 var(--sans); text-decoration: none; transition: top 200ms;
+}
+.skip:focus { top: calc(env(safe-area-inset-top, 0px) + 12px); }
 .eyebrow { font: 500 12px/1.2 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 
-/* Barra in alto */
+/* Barra in alto: entra dall'alto, diventa vetro dopo lo scroll, si nasconde scendendo e ricompare risalendo */
 .nav {
-  position: fixed; left: 0; right: 0; top: 0; z-index: 20;
-  padding: calc(env(safe-area-inset-top, 0px) + 14px) 24px 14px;
+  position: fixed; left: 0; right: 0; top: 0; z-index: 30;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 24px 18px;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   background: linear-gradient(180deg, rgba(8,11,16,0.85), rgba(8,11,16,0));
+  transition: transform 380ms cubic-bezier(.2,.7,.2,1), padding 300ms ease;
+  animation: navIn 800ms cubic-bezier(.2,.7,.2,1) backwards;
 }
-.nav .brand { font: 500 12px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 10px; }
-.nav .brand i { width: 8px; height: 8px; border-radius: 50%; background: var(--ice); box-shadow: 0 0 10px var(--accent); }
-.nav .links { display: flex; gap: 22px; }
-.nav .links a { font: 500 14px/1 var(--sans); color: var(--muted); text-decoration: none; }
-.nav .links a:hover { color: var(--ink); }
-.nav .links a.hot { color: var(--bg); background: var(--ice); padding: 9px 14px; border-radius: 999px; margin-top: -9px; margin-bottom: -9px; }
+.nav::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: rgba(8,11,16,0.74); border-bottom: 1px solid rgba(124,196,255,0.14);
+  -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%);
+  opacity: 0; transition: opacity 300ms ease;
+}
+.nav.scrolled { padding-block: calc(env(safe-area-inset-top, 0px) + 10px) 10px; }
+.nav.scrolled::before, .nav.open::before { opacity: 1; }
+.nav.away:not(:focus-within):not(.open) { transform: translateY(-110%); }
+@keyframes navIn { from { transform: translateY(-100%); opacity: 0; } }
+.nav .brand { font: 500 12px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.nav .brand i { width: 8px; height: 8px; border-radius: 50%; background: var(--ice); box-shadow: 0 0 10px var(--accent); animation: pulse 2.4s ease-in-out 3; }
+@keyframes pulse { 50% { box-shadow: 0 0 18px var(--accent), 0 0 0 5px rgba(124,196,255,0.16); } }
+.nav .links { position: relative; display: flex; align-items: center; gap: 4px; list-style: none; margin: 0; padding: 4px; }
+.nav .links li { display: flex; }
+.nav .links a {
+  position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px;
+  border-radius: 999px; font: 500 14px/1 var(--sans); color: var(--muted); text-decoration: none; transition: color 200ms;
+}
+.nav .links a:hover, .nav .links a[aria-current] { color: var(--ink); }
+.nav .links .ind {
+  position: absolute; left: 0; top: 4px; bottom: 4px; width: 0; border-radius: 999px; pointer-events: none;
+  background: rgba(124,196,255,0.12); box-shadow: inset 0 0 0 1px rgba(124,196,255,0.28); opacity: 0;
+  transition: transform 380ms cubic-bezier(.2,.7,.2,1), width 380ms cubic-bezier(.2,.7,.2,1), opacity 200ms;
+}
+.nav .links a.hot { margin-left: 8px; color: #06121c; background: var(--ice); font-weight: 600; transition: box-shadow 250ms, transform 200ms; }
+.nav .links a.hot:hover { box-shadow: 0 0 24px rgba(124,196,255,0.55); transform: translateY(-1px); }
+.nav .links a.hot[aria-current] { box-shadow: 0 0 0 3px rgba(191,228,255,0.3); }
+.menu-btn { display: none; position: relative; width: 44px; height: 44px; border-radius: 12px; border: 1px solid #2a3643; background: rgba(13,18,25,0.7); color: var(--ink); cursor: pointer; }
+.menu-btn i, .menu-btn i::before, .menu-btn i::after { position: absolute; width: 18px; height: 2px; border-radius: 1px; background: currentColor; transition: transform 250ms, background-color 150ms; }
+.menu-btn i { left: 12px; top: 20px; }
+.menu-btn i::before, .menu-btn i::after { content: ""; left: 0; }
+.menu-btn i::before { top: -6px; }
+.menu-btn i::after { top: 6px; }
+.menu-btn[aria-expanded="true"] i { background-color: transparent; }
+.menu-btn[aria-expanded="true"] i::before { transform: translateY(6px) rotate(45deg); }
+.menu-btn[aria-expanded="true"] i::after { transform: translateY(-6px) rotate(-45deg); }
+
+/* Pulsante per fermare le animazioni automatiche (WCAG 2.2.2) */
+.motion-btn {
+  position: fixed; left: 16px; bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); z-index: 25;
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid #2a3643; background: rgba(13,18,25,0.85); color: var(--ink); font: 500 13px/1 var(--sans); cursor: pointer;
+}
+.motion-btn i { width: 10px; height: 10px; border-left: 3px solid currentColor; border-right: 3px solid currentColor; }
+.motion-btn[aria-pressed="true"] i { width: 0; height: 0; border: 0; border-left: 9px solid currentColor; border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+.paused .packet, .paused .mouse::after, .paused .nav .brand i { animation-play-state: paused; }
 .progress { position: fixed; left: 0; top: 0; height: 2px; width: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); z-index: 21; }
 
 /* ---------- Racconto a scorrimento ---------- */
@@ -157,7 +207,7 @@ code { font-family: var(--mono); font-size: 0.86em; color: var(--ice); }
 /* Indice dei capitoli */
 .rail { position: fixed; right: 22px; top: 50%; transform: translateY(-50%); z-index: 15; display: grid; gap: 4px; transition: opacity 300ms; }
 .rail.hide { opacity: 0; pointer-events: none; }
-.rail button { display: flex; align-items: center; justify-content: flex-end; gap: 10px; background: none; border: 0; padding: 6px 0; cursor: pointer; color: var(--muted); font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.rail button { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 24px; min-height: 24px; background: none; border: 0; padding: 8px 0; cursor: pointer; color: var(--muted); font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
 .rail button span { opacity: 0; transform: translateX(6px); transition: opacity 200ms, transform 200ms; }
 .rail button:hover span, .rail button.cur span { opacity: 1; transform: none; }
 .rail button i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--muted); transition: all 200ms; }
@@ -199,7 +249,7 @@ code { font-family: var(--mono); font-size: 0.86em; color: var(--ice); }
 .node p { color: var(--muted); font-size: 15.5px; }
 pre.json { margin: 0; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; overflow-x: auto; font: 400 13.5px/1.7 var(--mono); color: #c9d4df; }
 pre.json .k { color: var(--accent); }
-pre.json .c { color: #56657a; }
+pre.json .c { color: #7d8da3; }
 
 .specs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
 .spec { background: var(--bg); padding: 24px 22px; display: grid; gap: 8px; align-content: start; }
@@ -258,30 +308,59 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
   .specs { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 640px) {
-  .nav { padding-inline: 16px; }
-  .nav .links a:not(.hot) { display: none; }
   .wrap { padding-inline: 16px; }
   .specs { grid-template-columns: 1fr; }
   .card .pair { grid-template-columns: 1fr; }
 }
+@media (max-width: 999px) {
+  /* In basso a sinistra ci sono le didascalie: su schermi stretti il pulsante va in alto, solo icona */
+  .motion-btn { left: auto; right: 16px; bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 84px); width: 40px; padding: 0; justify-content: center; }
+  .motion-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (max-width: 760px) {
+  .nav { padding-inline: 16px; }
+  .menu-btn { display: block; }
+  .nav .links {
+    position: absolute; top: calc(100% + 6px); left: 16px; right: 16px;
+    flex-direction: column; align-items: stretch; gap: 4px; padding: 10px; border-radius: 18px;
+    background: rgba(13,18,25,0.97); border: 1px solid #243140; box-shadow: 0 24px 48px -20px rgba(0,0,0,0.8);
+    opacity: 0; visibility: hidden; transform: translateY(-8px) scale(0.98); transform-origin: top right;
+    transition: opacity 200ms, transform 250ms cubic-bezier(.2,.7,.2,1), visibility 0s 250ms;
+  }
+  .nav.open .links { opacity: 1; visibility: visible; transform: none; transition: opacity 200ms, transform 250ms cubic-bezier(.2,.7,.2,1); }
+  .nav .links a { min-height: 48px; width: 100%; font-size: 16px; }
+  .nav .links a.hot { margin: 6px 0 0; justify-content: center; }
+  .nav .links .ind { display: none; }
+  .nav .links a[aria-current]:not(.hot) { background: rgba(124,196,255,0.12); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .mouse::after, .packet { animation: none; }
-  .vlist li, .rail button i, .rail button span { transition: none; }
+  .mouse::after, .packet, .nav, .nav .brand i { animation: none; }
+  .vlist li, .rail button i, .rail button span, .nav, .nav::before, .nav .links, .nav .links .ind, .nav .links a, .menu-btn i, .menu-btn i::before, .menu-btn i::after, .skip { transition: none; }
 }
 </style>
+</head>
+<body>
 
-<div class="progress" id="progress"></div>
-<nav class="nav">
-  <a class="brand" href="#top"><i></i>Double OLED</a>
-  <div class="links">
-    <a href="#top">Prodotto</a>
-    <a href="#schermate">Schermate</a>
-    <a href="#come">Come funziona</a>
-    <a class="hot" href="#contatti">Mi interessa</a>
-  </div>
-</nav>
+<a class="skip" href="#main">Salta al contenuto</a>
+<div class="progress" id="progress" aria-hidden="true"></div>
+<header class="nav" id="nav">
+  <a class="brand" href="#top"><i aria-hidden="true"></i>Double OLED</a>
+  <nav aria-label="Principale">
+    <button class="menu-btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="navLinks"><span class="sr">Menu</span><i aria-hidden="true"></i></button>
+    <ul class="links" id="navLinks">
+      <li class="ind" aria-hidden="true"></li>
+      <li><a href="#top" data-sec="top">Prodotto</a></li>
+      <li><a href="#schermate" data-sec="schermate">Schermate</a></li>
+      <li><a href="#come" data-sec="come">Come funziona</a></li>
+      <li><a class="hot" href="#contatti" data-sec="contatti">Mi interessa</a></li>
+    </ul>
+  </nav>
+</header>
 
-<nav class="rail" id="rail" aria-label="Capitoli"></nav>
+<nav class="rail" id="rail" aria-label="Capitoli del racconto"></nav>
+<button class="motion-btn" id="motionBtn" type="button" aria-pressed="false"><i aria-hidden="true"></i><span>Ferma animazioni</span></button>
+
+<main id="main" tabindex="-1">
 
 <div class="track" id="top">
   <div class="stage" id="stage">
@@ -328,7 +407,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
         <div class="hole" style="left:6px;top:6px"></div><div class="hole" style="right:6px;top:6px"></div>
         <div class="pins"><span>GND</span><span>VCC</span><span>SCL</span><span>SDA</span></div>
         <div class="glass"></div>
-        <canvas id="scr1" width="768" height="384" aria-label="Display 1"></canvas>
+        <canvas id="scr1" width="768" height="384" role="img" aria-label="Display 1: dimostrazione animata di CPU e GPU"></canvas>
         <div class="sheen"></div>
         <span class="tag"><b>2 × OLED SSD1306</b> · 128×64 · I2C 0x3C</span>
       </div>
@@ -336,7 +415,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
         <div class="hole" style="left:6px;top:6px"></div><div class="hole" style="right:6px;top:6px"></div>
         <div class="pins"><span>GND</span><span>VCC</span><span>SCL</span><span>SDA</span></div>
         <div class="glass"></div>
-        <canvas id="scr2" width="768" height="384" aria-label="Display 2"></canvas>
+        <canvas id="scr2" width="768" height="384" role="img" aria-label="Display 2: dimostrazione animata di RAM, WiFi e uptime"></canvas>
         <div class="sheen"></div>
         <span class="tag">bus separati · <b>SDA 27/32</b> · <b>SCL 14/33</b></span>
       </div>
@@ -475,8 +554,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     <h2 id="h-contatti">Ti interessa?<br><em>Parliamone.</em></h2>
     <p>Per ordinarne uno, per informazioni sul firmware o per una versione con viste su misura. Lasciaci i tuoi dati: ti risponde direttamente il nostro team.</p>
     <form class="lead" id="leadForm" novalidate>
-      <label class="fld"><span>Nome</span><input type="text" name="nome" autocomplete="name" required maxlength="100"></label>
-      <label class="fld"><span>Email</span><input type="email" name="email" autocomplete="email" required maxlength="200"></label>
+      <label class="fld"><span>Nome</span><input type="text" name="nome" autocomplete="name" required aria-required="true" maxlength="100"></label>
+      <label class="fld"><span>Email</span><input type="email" name="email" autocomplete="email" required aria-required="true" maxlength="200"></label>
       <fieldset class="full">
         <legend>Cosa ti interessa</legend>
         <div class="chips">
@@ -491,7 +570,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <div class="row full">
         <button class="btn primary" type="submit" id="leadSend">Invia richiesta</button>
         <p class="form-note" id="leadNote" role="status">Useremo i tuoi dati solo per risponderti.</p>
-        <a class="btn" id="leadFallback" href="#" target="_blank" rel="noopener" hidden>Apri il modulo precompilato</a>
+        <a class="btn" id="leadFallback" href="#" target="_blank" rel="noopener" hidden>Apri il modulo precompilato<span class="sr"> (si apre in una nuova scheda)</span></a>
       </div>
     </form>
     <div class="sent" id="leadSent" hidden tabindex="-1">
@@ -499,12 +578,13 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <p>Grazie! Il nostro team ti risponderà all'indirizzo che hai indicato, di solito entro un paio di giorni.</p>
     </div>
   </section>
-
-  <footer>
-    <span>© 2026 Double OLED · Gaming Monitor per PC</span>
-    <span style="font-family:var(--mono)">v1.0</span>
-  </footer>
 </div>
+</main>
+
+<footer class="wrap">
+  <span>© 2026 Double OLED · Gaming Monitor per PC</span>
+  <span style="font-family:var(--mono)">v1.0</span>
+</footer>
 
 <script>
 (() => {
@@ -996,12 +1076,80 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     m.draw(a, b, NOW);
     const fig = document.createElement("figure");
     fig.className = "card";
-    fig.innerHTML = `<div class="pair"><canvas width="512" height="256" aria-label="Display 1: ${s.title}"></canvas><canvas width="512" height="256" aria-label="Display 2: ${s.title}"></canvas></div>
+    fig.innerHTML = `<div class="pair"><canvas width="512" height="256" role="img" aria-label="Display 1, schermata ${s.title}"></canvas><canvas width="512" height="256" role="img" aria-label="Display 2, schermata ${s.title}"></canvas></div>
       <figcaption style="display:grid;gap:8px"><span class="t"><b>${String(i + 1).padStart(2, "0")}</b> · ${s.tag}</span><h3>${s.title}</h3><p>${s.text}</p></figcaption>`;
     const cv = fig.querySelectorAll("canvas");
     blit(a, cv[0]); blit(b, cv[1]);
     hgRow.appendChild(fig);
   });
+
+  // Un link dentro una didascalia nascosta che riceve il focus porta allo scroll del suo capitolo
+  caps.forEach((el, i) => el.addEventListener("focusin", () => {
+    if (!el.classList.contains("on")) scrollTo({ top: track.offsetTop + i * vh + 2, behavior: "auto" });
+  }));
+
+  // ---------- Barra di navigazione ----------
+  const nav = document.getElementById("nav"), menuBtn = document.getElementById("menuBtn"), navLinks = document.getElementById("navLinks");
+  const navItems = [...navLinks.querySelectorAll("a[data-sec]")];
+  const navSections = navItems.map(a => document.getElementById(a.dataset.sec));
+  const ind = navLinks.querySelector(".ind");
+  let lastY = scrollY, activeLink = null, hovering = false;
+
+  function setMenu(open) {
+    nav.classList.toggle("open", open);
+    menuBtn.setAttribute("aria-expanded", String(open));
+  }
+  menuBtn.addEventListener("click", () => setMenu(!nav.classList.contains("open")));
+  navLinks.addEventListener("click", e => { if (e.target.closest("a")) setMenu(false); });
+  addEventListener("keydown", e => {
+    if (e.key === "Escape" && nav.classList.contains("open")) { setMenu(false); menuBtn.focus(); }
+  });
+  document.addEventListener("click", e => { if (nav.classList.contains("open") && !nav.contains(e.target)) setMenu(false); });
+
+  // Indicatore che scorre sotto il link attivo (o quello sotto il puntatore)
+  function moveInd(a) {
+    if (!a || a.classList.contains("hot")) { ind.style.opacity = "0"; return; }
+    ind.style.opacity = "1";
+    ind.style.width = a.offsetWidth + "px";
+    ind.style.transform = `translateX(${a.offsetLeft}px)`;
+  }
+  navItems.forEach(a => {
+    const enter = () => { hovering = true; moveInd(a); };
+    const leave = () => { hovering = false; moveInd(activeLink); };
+    a.addEventListener("mouseenter", enter); a.addEventListener("mouseleave", leave);
+    a.addEventListener("focus", enter); a.addEventListener("blur", leave);
+  });
+  addEventListener("resize", () => moveInd(activeLink));
+  if (document.fonts) document.fonts.ready.then(() => moveInd(activeLink));
+
+  function navFrame() {
+    const y = scrollY;
+    nav.classList.toggle("scrolled", y > 24);
+    if (Math.abs(y - lastY) > 6) {
+      nav.classList.toggle("away", y > lastY && y > 160);
+      lastY = y;
+    }
+    // Sezione corrente: l'ultima che inizia sopra il 40% dello schermo
+    let cur = null;
+    navSections.forEach((sec, i) => { if (sec && sec.getBoundingClientRect().top <= innerHeight * 0.4) cur = navItems[i]; });
+    if (cur !== activeLink) {
+      navItems.forEach(a => { if (a === cur) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current"); });
+      activeLink = cur;
+      if (!hovering) moveInd(cur);
+    }
+  }
+
+  // ---------- Pausa delle animazioni ----------
+  const motionBtn = document.getElementById("motionBtn");
+  let paused = false;
+  function setPaused(on) {
+    paused = on;
+    document.documentElement.classList.toggle("paused", on);
+    motionBtn.setAttribute("aria-pressed", String(on));
+    motionBtn.lastElementChild.textContent = on ? "Riprendi animazioni" : "Ferma animazioni";
+  }
+  motionBtn.addEventListener("click", () => setPaused(!paused));
+  setPaused(reduced);
 
   // ---------- Ciclo principale ----------
   const progress = document.getElementById("progress");
@@ -1014,10 +1162,15 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     const doc = document.documentElement;
     progress.style.transform = `scaleX(${clamp(scrollY / Math.max(1, doc.scrollHeight - innerHeight), 0, 1)})`;
     const cur = Math.round(c);
-    railBtns.forEach((b, i) => b.classList.toggle("cur", i === cur));
+    railBtns.forEach((b, i) => {
+      b.classList.toggle("cur", i === cur);
+      if (i === cur) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+    });
+    navFrame();
     const tr = track.getBoundingClientRect();
     rail.classList.toggle("hide", tr.bottom < vh * 0.5);
-    if (ts - lastScreens > 120 || Math.abs(c - lastC) > 0.01) {
+    // In pausa i display cambiano solo con lo scroll, non da soli
+    if ((!paused && ts - lastScreens > 120) || Math.abs(c - lastC) > 0.01) {
       if (tr.bottom > 0) screens(c);
       lastScreens = ts; lastC = c;
     }
@@ -1042,14 +1195,22 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
   const sendBtn = document.getElementById("leadSend");
   const fallback = document.getElementById("leadFallback");
   const setNote = (text, err) => { note.textContent = text; note.classList.toggle("err", !!err); };
+  // Errore collegato al campo: lo screen reader legge il messaggio quando il focus torna sul campo
+  const markInvalid = (field, text) => {
+    field.setAttribute("aria-invalid", "true"); field.setAttribute("aria-describedby", "leadNote");
+    setNote(text, true); field.focus();
+  };
+  for (const field of [form.nome, form.email]) field.addEventListener("input", () => {
+    field.removeAttribute("aria-invalid"); field.removeAttribute("aria-describedby");
+  });
 
   form.addEventListener("submit", async ev => {
     ev.preventDefault();
     const data = new FormData(form);
     if (data.get("sito")) return;  // campo trappola per i bot
     const nome = String(data.get("nome")).trim(), email = String(data.get("email")).trim();
-    if (!nome) { setNote("Scrivi il tuo nome.", true); form.nome.focus(); return; }
-    if (!form.email.checkValidity() || !email) { setNote("Controlla l'indirizzo email.", true); form.email.focus(); return; }
+    if (!nome) { markInvalid(form.nome, "Scrivi il tuo nome."); return; }
+    if (!form.email.checkValidity() || !email) { markInvalid(form.email, "Controlla l'indirizzo email: deve essere nel formato nome@dominio.it."); return; }
     if (!formReady) { setNote("Il modulo non è ancora attivo. Riprova tra qualche giorno.", true); return; }
 
     const body = new URLSearchParams();
