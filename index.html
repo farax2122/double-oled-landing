@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>Double OLED Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Tema unico scuro, scelto di proposito: gli OLED si leggono solo sul buio */
+:root {
+  color-scheme: dark;
+  --bg: #080b10;
+  --bg2: #0d1219;
+  --ink: #eef2f6;
+  --muted: #8b97a6;
+  --line: #1c2530;
+  --ice: #bfe4ff;
+  --accent: #7cc4ff;
+  --amber: #ffb44a;
+  --red: #ff6a5c;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --sans: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: auto; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 17px/1.6 var(--sans);
+  overflow-x: clip;
+}
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+p { margin: 0; }
+h2, h3 { margin: 0; font-family: var(--display); text-wrap: balance; }
+code { font-family: var(--mono); font-size: 0.86em; color: var(--ice); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.eyebrow { font: 500 12px/1.2 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+/* Barra in alto */
+.nav {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 20;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) 24px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: linear-gradient(180deg, rgba(8,11,16,0.85), rgba(8,11,16,0));
+}
+.nav .brand { font: 500 12px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.nav .brand i { width: 8px; height: 8px; border-radius: 50%; background: var(--ice); box-shadow: 0 0 10px var(--accent); }
+.nav .links { display: flex; gap: 22px; }
+.nav .links a { font: 500 14px/1 var(--sans); color: var(--muted); text-decoration: none; }
+.nav .links a:hover { color: var(--ink); }
+.nav .links a.hot { color: var(--bg); background: var(--ice); padding: 9px 14px; border-radius: 999px; margin-top: -9px; margin-bottom: -9px; }
+.progress { position: fixed; left: 0; top: 0; height: 2px; width: 100%; background: var(--accent); transform-origin: 0 50%; transform: scaleX(0); z-index: 21; }
+
+/* ---------- Racconto a scorrimento ---------- */
+.track { position: relative; height: 600vh; }
+.stage {
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  perspective: 2000px;
+  background:
+    radial-gradient(60% 55% at var(--lx, 63%) 48%, rgba(124,196,255,0.10), transparent 70%),
+    radial-gradient(120% 80% at 50% 120%, #0f1620, transparent 60%),
+    var(--bg);
+}
+.floor { position: absolute; left: 0; right: 0; bottom: 0; height: 38%; background: linear-gradient(180deg, transparent, rgba(0,0,0,0.35)); pointer-events: none; }
+.cam { position: absolute; left: 0; top: 0; width: 840px; height: 230px; transform-style: preserve-3d; will-change: transform; }
+.layer { position: absolute; transform-style: preserve-3d; }
+.shell { left: 0; top: 0; width: 840px; height: 230px; transform: translateZ(-28px); }
+.face { position: absolute; }
+.f-back { left: 0; top: 0; width: 840px; height: 230px; transform: rotateY(180deg) translateZ(28px); background: #0f1216; border-radius: 4px; }
+.f-top { left: 0; top: 87px; width: 840px; height: 56px; transform: rotateX(90deg) translateZ(115px); background: linear-gradient(90deg, #2a3038, #39414b 50%, #2a3038); }
+.f-bot { left: 0; top: 87px; width: 840px; height: 56px; transform: rotateX(-90deg) translateZ(115px); background: #0b0d10; }
+.f-right { left: 392px; top: 0; width: 56px; height: 230px; transform: rotateY(90deg) translateZ(420px); background: linear-gradient(180deg, #242a31, #15191e); }
+.f-left { left: 392px; top: 0; width: 56px; height: 230px; transform: rotateY(-90deg) translateZ(420px); background: linear-gradient(180deg, #1d2228, #111418); }
+.shadow { position: absolute; left: 60px; top: 150px; width: 720px; height: 200px; background: radial-gradient(closest-side, rgba(0,0,0,0.6), transparent); transform: translateZ(-70px) rotateX(90deg) translateZ(-60px); filter: blur(8px); }
+
+.plate { left: 0; top: 0; width: 840px; height: 230px; }
+.plate svg { display: block; width: 840px; height: 230px; }
+.oled { width: 362px; height: 226px; top: 2px; background: #184a86; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+.oled .hole { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #0a0d11; box-shadow: 0 0 0 3px #b9c2cc; }
+.oled .pins { position: absolute; left: 131px; top: 4px; display: flex; gap: 8px; }
+.oled .pins span { display: grid; justify-items: center; gap: 2px; font: 500 7px/1 var(--mono); color: #d7e6f7; }
+.oled .pins span::before { content: ""; width: 14px; height: 9px; background: #c9a64a; border-radius: 2px; }
+.oled .glass { position: absolute; left: 8px; top: 20px; width: 346px; height: 190px; background: #050608; border-radius: 3px; }
+.oled canvas { position: absolute; left: 16px; top: 30px; width: 330px; height: 165px; display: block; }
+.oled .sheen { position: absolute; left: 16px; top: 30px; width: 330px; height: 165px; background: linear-gradient(115deg, rgba(255,255,255,0.07), rgba(255,255,255,0) 38%); pointer-events: none; }
+.esp { left: 250px; top: 40px; width: 340px; height: 150px; }
+.enc { left: 716px; top: 55px; width: 120px; height: 120px; }
+.esp svg, .enc svg { display: block; width: 100%; height: 100%; }
+.knob3d { left: 738px; top: 77px; width: 76px; height: 76px; }
+.disc { position: absolute; inset: 0; border-radius: 50%; background: #262c33; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
+.disc.top {
+  background:
+    radial-gradient(circle at 42% 38%, #4a525c 0 20%, #333a42 48%, transparent 49%),
+    repeating-conic-gradient(#2a3037 0 5deg, #454d57 5deg 10deg);
+  box-shadow: 0 0 0 1px #0c0e11;
+}
+.disc.top::after { content: ""; position: absolute; left: 50%; top: 7px; width: 5px; height: 16px; margin-left: -2.5px; border-radius: 3px; background: var(--ice); box-shadow: 0 0 8px rgba(191,228,255,0.8); }
+.tag {
+  position: absolute; left: 0; top: -40px; white-space: nowrap;
+  font: 500 15px/1 var(--mono); color: var(--ink); letter-spacing: 0.04em;
+  padding: 8px 12px; border-radius: 999px; background: rgba(13,18,25,0.85); border: 1px solid #2a3643;
+  opacity: 0; pointer-events: none;
+}
+.tag b { color: var(--ice); font-weight: 500; }
+
+/* Didascalie dei capitoli */
+.caps { position: absolute; inset: 0; pointer-events: none; }
+.cap {
+  position: absolute; left: max(24px, 6vw); top: 50%; width: min(440px, 34vw);
+  transform: translateY(-50%); display: grid; gap: 16px; opacity: 0;
+}
+.cap.on { pointer-events: auto; }
+.cap h2 { font-size: clamp(30px, 3.4vw, 50px); line-height: 1.02; font-weight: 800; letter-spacing: -0.02em; }
+.cap h2 em { font-style: normal; color: var(--ice); text-shadow: 0 0 22px rgba(124,196,255,0.45); }
+.cap p { color: #b3bfcc; font-size: 17px; max-width: 42ch; }
+.cap .num { font: 500 12px/1 var(--mono); color: var(--accent); letter-spacing: 0.14em; }
+.pix { display: block; width: 100%; max-width: 440px; height: auto; color: var(--ice); filter: drop-shadow(0 0 14px rgba(124,196,255,0.45)); }
+.hint { display: flex; align-items: center; gap: 12px; font: 500 12px/1 var(--mono); letter-spacing: 0.12em; color: var(--muted); text-transform: uppercase; }
+.mouse { width: 22px; height: 34px; border: 2px solid var(--muted); border-radius: 12px; position: relative; }
+.mouse::after { content: ""; position: absolute; left: 50%; top: 6px; width: 3px; height: 7px; margin-left: -1.5px; border-radius: 2px; background: var(--ice); animation: wheel 1.6s ease-in-out infinite; }
+@keyframes wheel { 0% { transform: translateY(0); opacity: 1; } 70% { transform: translateY(10px); opacity: 0; } 100% { transform: translateY(0); opacity: 0; } }
+
+.thermo { display: grid; gap: 14px; margin-top: 4px; }
+.th-row { display: grid; grid-template-columns: 38px 1fr 64px; gap: 12px; align-items: center; font: 500 13px/1 var(--mono); }
+.th-row .lbl { color: var(--muted); }
+.th-row .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.th-track { position: relative; height: 8px; border-radius: 4px; background: #16202b; }
+.th-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--ice); width: 30%; }
+.th-mark { position: absolute; top: -5px; bottom: -5px; width: 1px; background: #5b6877; }
+.th-mark span { position: absolute; top: -14px; left: -10px; font: 500 9px/1 var(--mono); color: var(--muted); }
+.th-row.warn .th-fill { background: var(--amber); }
+.th-row.crit .th-fill { background: var(--red); }
+.th-row.warn .val { color: var(--amber); }
+.th-row.crit .val { color: var(--red); }
+.th-state { font: 500 12px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+.vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.vlist li { display: grid; grid-template-columns: 28px 110px 1fr; gap: 10px; align-items: baseline; padding: 9px 12px; border-radius: 8px; color: var(--muted); font-size: 15px; transition: background 200ms, color 200ms; }
+.vlist li b { font: 500 13px/1 var(--mono); letter-spacing: 0.06em; }
+.vlist li i { font: 500 11px/1 var(--mono); font-style: normal; }
+.vlist li.cur { background: rgba(124,196,255,0.10); color: var(--ink); }
+.vlist li.cur b { color: var(--ice); }
+
+
+.btns { display: flex; flex-wrap: wrap; gap: 12px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; font: 600 15px/1 var(--sans); padding: 14px 20px; border-radius: 999px; text-decoration: none; border: 1px solid #2a3643; color: var(--ink); background: rgba(255,255,255,0.02); cursor: pointer; }
+.btn.primary { background: var(--ice); color: #06121c; border-color: var(--ice); box-shadow: 0 0 30px rgba(124,196,255,0.35); }
+.btn:hover { transform: translateY(-1px); }
+
+/* Indice dei capitoli */
+.rail { position: fixed; right: 22px; top: 50%; transform: translateY(-50%); z-index: 15; display: grid; gap: 4px; transition: opacity 300ms; }
+.rail.hide { opacity: 0; pointer-events: none; }
+.rail button { display: flex; align-items: center; justify-content: flex-end; gap: 10px; background: none; border: 0; padding: 6px 0; cursor: pointer; color: var(--muted); font: 500 11px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.rail button span { opacity: 0; transform: translateX(6px); transition: opacity 200ms, transform 200ms; }
+.rail button:hover span, .rail button.cur span { opacity: 1; transform: none; }
+.rail button i { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--muted); transition: all 200ms; }
+.rail button.cur { color: var(--ink); }
+.rail button.cur i { background: var(--ice); border-color: var(--ice); box-shadow: 0 0 10px var(--accent); height: 22px; border-radius: 4px; }
+
+/* ---------- Galleria orizzontale ---------- */
+.hg { position: relative; }
+.hg-sticky { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; display: grid; align-content: center; gap: 36px; }
+.hg-head { padding-inline: max(24px, 6vw); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 16px 40px; }
+.hg-head h2 { font-size: clamp(34px, 5vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -0.025em; }
+.hg-head p { color: var(--muted); max-width: 46ch; }
+.hg-row { display: flex; gap: 28px; padding-inline: max(24px, 6vw); width: max-content; will-change: transform; }
+.card { width: min(80vw, 560px); display: grid; gap: 16px; margin: 0; }
+.card .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; border-radius: 14px; background: linear-gradient(180deg, #232931, #15191e); box-shadow: 0 30px 60px -30px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.06); }
+.card canvas { display: block; width: 100%; max-width: 100%; aspect-ratio: 2 / 1; border-radius: 3px; }
+.card .t { font: 500 12px/1.2 var(--mono); letter-spacing: 0.1em; color: var(--muted); text-transform: uppercase; }
+.card .t b { color: var(--ice); font-weight: 500; }
+.card h3 { font-size: 24px; font-weight: 600; }
+.card p { color: #a7b3c0; font-size: 15.5px; max-width: 52ch; }
+.hg-bar { margin-inline: max(24px, 6vw); height: 2px; background: var(--line); border-radius: 1px; overflow: hidden; }
+.hg-bar i { display: block; height: 100%; width: 100%; background: var(--ice); transform-origin: 0 50%; transform: scaleX(0); }
+
+/* ---------- Sezioni normali ---------- */
+.wrap { max-width: 1120px; margin-inline: auto; padding-inline: 24px; }
+.sec { padding-block: 120px 40px; display: grid; gap: 40px; }
+.sec-head { display: grid; gap: 14px; max-width: 62ch; }
+.sec-head h2 { font-size: clamp(32px, 4.4vw, 56px); line-height: 1.02; font-weight: 800; letter-spacing: -0.02em; }
+.sec-head p { color: var(--muted); }
+
+.flow { position: relative; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.wire { position: absolute; left: 16%; right: 16%; top: 38px; height: 2px; background: repeating-linear-gradient(90deg, #2a3643 0 6px, transparent 6px 12px); }
+.packet { position: absolute; top: -5px; left: 0; width: 34px; height: 12px; border-radius: 6px; background: var(--ice); box-shadow: 0 0 16px var(--accent); animation: packet 2.5s cubic-bezier(.6,0,.3,1) infinite; }
+.packet::after { content: "{ }"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 8px/1 var(--mono); color: #06121c; }
+@keyframes packet { 0% { left: 0; opacity: 0; } 8% { opacity: 1; } 88% { opacity: 1; } 100% { left: calc(100% - 34px); opacity: 0; } }
+.node { position: relative; display: grid; gap: 10px; justify-items: start; }
+.node .ic { width: 76px; height: 76px; border-radius: 20px; display: grid; place-items: center; background: var(--bg2); border: 1px solid #243140; font: 600 14px/1 var(--mono); color: var(--ice); position: relative; z-index: 1; }
+.node h3 { font-size: 21px; font-weight: 600; }
+.node p { color: var(--muted); font-size: 15.5px; }
+pre.json { margin: 0; background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; overflow-x: auto; font: 400 13.5px/1.7 var(--mono); color: #c9d4df; }
+pre.json .k { color: var(--accent); }
+pre.json .c { color: #56657a; }
+
+.specs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.spec { background: var(--bg); padding: 24px 22px; display: grid; gap: 8px; align-content: start; }
+.spec .k { font: 500 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.spec .v { font: 600 22px/1.15 var(--display); }
+.spec .s { font-size: 14px; color: var(--muted); }
+
+.contact { margin-block: 120px 60px; border-radius: 28px; padding: clamp(28px, 6vw, 72px); display: grid; gap: 28px; position: relative; overflow: hidden; background: radial-gradient(80% 120% at 85% 0%, rgba(124,196,255,0.16), transparent 60%), var(--bg2); border: 1px solid #1d2835; }
+.contact h2 { font-size: clamp(40px, 7vw, 92px); line-height: 0.95; font-weight: 800; letter-spacing: -0.03em; }
+.contact h2 em { font-style: normal; color: var(--ice); }
+.contact > p { color: #aebccb; max-width: 52ch; font-size: 18px; }
+.lead { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 16px; max-width: 720px; }
+.lead .full { grid-column: 1 / -1; }
+.fld { display: grid; gap: 8px; }
+.fld > span, .lead legend { font: 500 12px/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lead input[type=text], .lead input[type=email], .lead textarea {
+  width: 100%; font: 400 16px/1.4 var(--sans); color: var(--ink);
+  background: #06090d; border: 1px solid #243140; border-radius: 12px; padding: 13px 16px;
+}
+.lead textarea { min-height: 120px; resize: vertical; }
+.lead input:focus, .lead textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,196,255,0.18); }
+.lead fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lead legend { padding: 0; margin-bottom: 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips label { position: relative; }
+.chips input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chips span { display: inline-block; font: 500 14px/1 var(--sans); padding: 11px 15px; border-radius: 999px; border: 1px solid #2f3d4c; background: #0b1016; color: #b3bfcc; }
+.chips input:checked + span { background: var(--ice); border-color: var(--ice); color: #06121c; }
+.chips input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 3px; }
+.lead .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.lead .row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.lead button[disabled] { opacity: 0.6; cursor: wait; transform: none; }
+.form-note { font-size: 13.5px; color: var(--muted); }
+.form-note.err { color: var(--red); }
+.sent { display: grid; gap: 10px; max-width: 560px; padding: 24px; border-radius: 16px; border: 1px solid #243140; background: #06090d; }
+.sent h3 { font-size: 26px; font-weight: 600; }
+.sent p { color: #aebccb; }
+@media (max-width: 640px) { .lead { grid-template-columns: 1fr; } }
+footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: 14px; color: var(--muted); }
+
+@media (max-width: 999px) {
+  .cap { left: 16px; right: 16px; width: auto; top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 22px); transform: none; gap: 12px; }
+  .cap h2 { font-size: clamp(26px, 7vw, 36px); }
+  .cap p { font-size: 15.5px; }
+  .pix { max-width: 320px; }
+  .stage::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 58%; background: linear-gradient(180deg, transparent, rgba(8,11,16,0.92) 38%); pointer-events: none; }
+  .caps { z-index: 2; }
+  .rail { right: 8px; }
+  .rail button span { display: none; }
+  .vlist li { grid-template-columns: 24px 96px 1fr; padding: 6px 10px; font-size: 13.5px; }
+  .flow { grid-template-columns: 1fr; }
+  .wire { left: 37px; right: auto; top: 40px; bottom: 40px; width: 2px; height: auto; background: repeating-linear-gradient(180deg, #2a3643 0 6px, transparent 6px 12px); }
+  .packet { display: none; }
+  .node { padding-left: 96px; min-height: 76px; }
+  .node .ic { position: absolute; left: 0; top: 0; }
+  .specs { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .nav { padding-inline: 16px; }
+  .nav .links a:not(.hot) { display: none; }
+  .wrap { padding-inline: 16px; }
+  .specs { grid-template-columns: 1fr; }
+  .card .pair { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mouse::after, .packet { animation: none; }
+  .vlist li, .rail button i, .rail button span { transition: none; }
+}
+</style>
+
+<div class="progress" id="progress"></div>
+<nav class="nav">
+  <a class="brand" href="#top"><i></i>Double OLED</a>
+  <div class="links">
+    <a href="#top">Prodotto</a>
+    <a href="#schermate">Schermate</a>
+    <a href="#come">Come funziona</a>
+    <a class="hot" href="#contatti">Mi interessa</a>
+  </div>
+</nav>
+
+<nav class="rail" id="rail" aria-label="Capitoli"></nav>
+
+<div class="track" id="top">
+  <div class="stage" id="stage">
+    <div class="floor"></div>
+    <div class="cam" id="cam">
+      <div class="layer shell">
+        <div class="face f-back"></div><div class="face f-top"></div><div class="face f-bot"></div>
+        <div class="face f-left"></div><div class="face f-right"></div>
+      </div>
+
+      <div class="layer esp" id="L-esp">
+        <svg viewBox="0 0 340 150" aria-hidden="true">
+          <rect x="0" y="0" width="340" height="150" rx="8" fill="#16181b"/>
+          <g fill="#c9a64a">
+            <g id="pinrow"><rect x="24" y="8" width="8" height="8" rx="1"/><rect x="44" y="8" width="8" height="8" rx="1"/><rect x="64" y="8" width="8" height="8" rx="1"/><rect x="84" y="8" width="8" height="8" rx="1"/><rect x="104" y="8" width="8" height="8" rx="1"/><rect x="124" y="8" width="8" height="8" rx="1"/><rect x="144" y="8" width="8" height="8" rx="1"/><rect x="164" y="8" width="8" height="8" rx="1"/><rect x="184" y="8" width="8" height="8" rx="1"/><rect x="204" y="8" width="8" height="8" rx="1"/><rect x="224" y="8" width="8" height="8" rx="1"/><rect x="244" y="8" width="8" height="8" rx="1"/><rect x="264" y="8" width="8" height="8" rx="1"/><rect x="284" y="8" width="8" height="8" rx="1"/><rect x="304" y="8" width="8" height="8" rx="1"/></g>
+            <use href="#pinrow" y="126"/>
+          </g>
+          <rect x="150" y="32" width="150" height="86" rx="4" fill="#b8c0c9"/>
+          <rect x="156" y="38" width="138" height="74" rx="3" fill="#cfd6de"/>
+          <text x="225" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#4a535e">ESP32-WROOM</text>
+          <text x="225" y="88" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#6b7580">WiFi · BT</text>
+          <rect x="300" y="32" width="30" height="86" fill="#1f5b3a"/>
+          <path d="M306 40h18v10h-18v10h18v10h-18v10h18v10h-18v10h18" fill="none" stroke="#c9a64a" stroke-width="2"/>
+          <rect x="4" y="56" width="26" height="38" rx="3" fill="#aab3bc"/>
+          <rect x="56" y="40" width="22" height="16" rx="2" fill="#2a2e33"/><rect x="56" y="94" width="22" height="16" rx="2" fill="#2a2e33"/>
+          <circle cx="67" cy="48" r="4" fill="#0d0f11"/><circle cx="67" cy="102" r="4" fill="#0d0f11"/>
+          <rect x="94" y="62" width="34" height="26" rx="2" fill="#0c0d0f"/>
+          <circle cx="44" cy="75" r="3" fill="#ff5b4a"/>
+        </svg>
+        <span class="tag"><b>ESP32</b> · WiFi 2,4 GHz</span>
+      </div>
+
+      <div class="layer enc" id="L-enc">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <rect x="0" y="0" width="120" height="120" rx="6" fill="#1b4f8a"/>
+          <rect x="30" y="30" width="60" height="60" rx="4" fill="#9aa4ae"/>
+          <circle cx="60" cy="60" r="16" fill="#5d6771"/>
+          <g fill="#c9a64a"><rect x="6" y="20" width="8" height="8"/><rect x="6" y="38" width="8" height="8"/><rect x="6" y="56" width="8" height="8"/><rect x="6" y="74" width="8" height="8"/><rect x="6" y="92" width="8" height="8"/></g>
+        </svg>
+        <span class="tag"><b>Encoder KY-040</b> · CLK 5 · DT 18 · SW 19</span>
+      </div>
+
+      <div class="layer oled" id="L-oled1" style="left:16px">
+        <div class="hole" style="left:6px;top:6px"></div><div class="hole" style="right:6px;top:6px"></div>
+        <div class="pins"><span>GND</span><span>VCC</span><span>SCL</span><span>SDA</span></div>
+        <div class="glass"></div>
+        <canvas id="scr1" width="768" height="384" aria-label="Display 1"></canvas>
+        <div class="sheen"></div>
+        <span class="tag"><b>2 × OLED SSD1306</b> · 128×64 · I2C 0x3C</span>
+      </div>
+      <div class="layer oled" id="L-oled2" style="left:366px">
+        <div class="hole" style="left:6px;top:6px"></div><div class="hole" style="right:6px;top:6px"></div>
+        <div class="pins"><span>GND</span><span>VCC</span><span>SCL</span><span>SDA</span></div>
+        <div class="glass"></div>
+        <canvas id="scr2" width="768" height="384" aria-label="Display 2"></canvas>
+        <div class="sheen"></div>
+        <span class="tag">bus separati · <b>SDA 27/32</b> · <b>SCL 14/33</b></span>
+      </div>
+
+      <div class="layer plate" id="L-plate">
+        <svg viewBox="0 0 840 230" aria-hidden="true">
+          <defs>
+            <linearGradient id="pg" x1="0" y1="0" x2="0.25" y2="1">
+              <stop offset="0" stop-color="#303740"/><stop offset="0.45" stop-color="#1e2228"/><stop offset="1" stop-color="#14171b"/>
+            </linearGradient>
+          </defs>
+          <path fill="url(#pg)" fill-rule="evenodd" d="M6 0H834A6 6 0 0 1 840 6V224A6 6 0 0 1 834 230H6A6 6 0 0 1 0 224V6A6 6 0 0 1 6 0Z M32 32H362V197H32Z M382 32H712V197H382Z M734 115a42 42 0 1 0 84 0a42 42 0 1 0 -84 0Z"/>
+          <rect x="6" y="0" width="828" height="1.5" fill="rgba(255,255,255,0.22)"/>
+          <rect x="30.5" y="30.5" width="333" height="168" fill="none" stroke="#0a0c0f" stroke-width="3"/>
+          <rect x="380.5" y="30.5" width="333" height="168" fill="none" stroke="#0a0c0f" stroke-width="3"/>
+          <circle cx="776" cy="115" r="43.5" fill="none" stroke="#0a0c0f" stroke-width="3"/>
+          <g font-family="JetBrains Mono, monospace" font-size="9.5" fill="#5f6974" letter-spacing="2" text-anchor="middle">
+            <text x="197" y="217">DISPLAY 1 · CPU / GPU</text>
+            <text x="547" y="217">DISPLAY 2 · RAM / NET</text>
+            <text x="776" y="185">VIEW · PUSH</text>
+            <text x="776" y="22">DOUBLE OLED</text>
+          </g>
+        </svg>
+        <span class="tag"><b>Frontale</b> · due finestre e l'encoder</span>
+      </div>
+
+      <div class="layer knob3d" id="L-knob">
+        <div class="disc" style="transform:translateZ(0)"></div>
+        <div class="disc" style="transform:translateZ(6px)"></div>
+        <div class="disc" style="transform:translateZ(12px)"></div>
+        <div class="disc top" id="knobTop" style="transform:translateZ(18px)"></div>
+        <span class="tag" style="left:-40px;top:-48px"><b>Manopola</b> · ruota e premi</span>
+      </div>
+    </div>
+
+    <div class="caps">
+      <article class="cap" data-i="0">
+        <p class="eyebrow">ESP32 · 2 × OLED 128×64</p>
+        <h1 style="margin:0"><span class="sr">Double OLED Gaming Monitor</span><svg class="pix" id="pixTitle" aria-hidden="true"></svg></h1>
+        <p>Le metriche del PC su due display accanto alla tastiera. CPU, GPU, RAM e temperature sempre in vista, senza overlay sopra il gioco.</p>
+        <div class="hint"><span class="mouse"></span>Scorri per scoprirlo</div>
+      </article>
+      <article class="cap" data-i="1">
+        <span class="num">01 · Panoramica</span>
+        <h2>Tutto il PC in <em>un colpo d'occhio</em></h2>
+        <p>A sinistra CPU e GPU: carico, frequenza, VRAM e temperatura. A destra RAM, segnale WiFi, stato del PC e uptime. Si aggiornano ogni 2,5 secondi.</p>
+      </article>
+      <article class="cap" data-i="2">
+        <span class="num">02 · Allarmi</span>
+        <h2>Allarmi che si vedono <em>anche senza colori</em></h2>
+        <p>Gli OLED sono monocromatici. Sopra la soglia la temperatura passa in negativo, oltre 85 °C lampeggia con il "!". Continua a scorrere e scalda il PC.</p>
+        <div class="thermo">
+          <div class="th-row" id="thCpu"><span class="lbl">CPU</span><div class="th-track"><div class="th-fill"></div><div class="th-mark" style="left:50%"><span>70°</span></div><div class="th-mark" style="left:75%"><span>85°</span></div></div><span class="val">60 °C</span></div>
+          <div class="th-row" id="thGpu"><span class="lbl">GPU</span><div class="th-track"><div class="th-fill"></div><div class="th-mark" style="left:58.33%"><span>75°</span></div><div class="th-mark" style="left:75%"><span>85°</span></div></div><span class="val">64 °C</span></div>
+          <span class="th-state" id="thState">Tutto normale</span>
+        </div>
+      </article>
+      <article class="cap" data-i="3">
+        <span class="num">03 · Encoder</span>
+        <h2>Una manopola, <em>quattro viste</em></h2>
+        <p>Ruota per cambiare vista. Premi per agire su quella corrente.</p>
+        <ol class="vlist" id="vlist">
+          <li class="cur"><i>1/4</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
+          <li><i>2/4</i><b>TEMPS</b><span>premi: azzera i massimi</span></li>
+          <li><i>3/4</i><b>GRAPHS</b><span>premi: uso o temperatura</span></li>
+          <li><i>4/4</i><b>NETWORK</b><span>premi: riconnetti al PC</span></li>
+        </ol>
+      </article>
+      <article class="cap" data-i="4">
+        <span class="num">04 · Dentro</span>
+        <h2>Tre componenti, <em>zero schede nel PC</em></h2>
+        <p>Un ESP32 con WiFi, due OLED SSD1306 e un encoder rotativo. I display hanno lo stesso indirizzo I2C, quindi ognuno ha il suo bus. Il PC non va aperto: basta la rete di casa.</p>
+      </article>
+      <article class="cap" data-i="5">
+        <span class="num">05 · Sulla tua scrivania</span>
+        <h2>Ne vuoi <em>uno anche tu?</em></h2>
+        <p>Scrivimi per averne uno, per il firmware o per una versione con viste su misura.</p>
+        <div class="btns"><a class="btn primary" href="#contatti">Mi interessa</a><a class="btn" href="#schermate">Tutte le schermate</a></div>
+      </article>
+    </div>
+  </div>
+</div>
+
+<section class="hg" id="schermate" aria-labelledby="h-sch">
+  <div class="hg-sticky">
+    <div class="hg-head">
+      <div style="display:grid;gap:12px">
+        <p class="eyebrow">Le schermate</p>
+        <h2 id="h-sch">Pixel per pixel,<br>come sul display</h2>
+      </div>
+      <p>Ogni coppia è disegnata con lo stesso codice del firmware, display 1 a sinistra e display 2 a destra. Continua a scorrere per sfogliarle.</p>
+    </div>
+    <div class="hg-row" id="hgRow"></div>
+    <div class="hg-bar"><i id="hgBar"></i></div>
+  </div>
+</section>
+
+<div class="wrap">
+  <section class="sec" id="come" aria-labelledby="h-come">
+    <div class="sec-head">
+      <p class="eyebrow">Come funziona</p>
+      <h2 id="h-come">Dal PC ai display in 2,5 secondi</h2>
+      <p>Il pacchetto qui sotto viaggia con lo stesso ritmo dei dati veri.</p>
+    </div>
+    <div class="flow">
+      <div class="wire"><span class="packet"></span></div>
+      <div class="node"><div class="ic">PC</div><h3>Il server legge le metriche</h3><p>Un programma Python su Windows raccoglie CPU, RAM e uptime. La GPU arriva da <code>nvidia-smi</code>, la temperatura CPU da LibreHardwareMonitor.</p></div>
+      <div class="node"><div class="ic">WS</div><h3>Le invia sulla rete di casa</h3><p>Un messaggio JSON su WebSocket, porta 9000. Se il PC si riavvia, l'ESP32 si ricollega da solo.</p></div>
+      <div class="node"><div class="ic">ESP</div><h3>I display si aggiornano</h3><p>Ridisegno a ogni messaggio e ogni 500 ms, così gli allarmi lampeggiano a ritmo costante.</p></div>
+    </div>
+<pre class="json" aria-label="Esempio di messaggio"><span class="c">// ws://IP_PC:9000/ws, ogni 2,5 s</span>
+{
+  <span class="k">"cpu"</span>:    { <span class="k">"usage"</span>: 45.2, <span class="k">"temperature"</span>: 65.5, <span class="k">"frequency"</span>: 3400 },
+  <span class="k">"gpu"</span>:    { <span class="k">"usage"</span>: 78.5, <span class="k">"temperature"</span>: 82.0, <span class="k">"vram_used_mb"</span>: 4096 },
+  <span class="k">"ram"</span>:    { <span class="k">"usage_percent"</span>: 62.3, <span class="k">"used_mb"</span>: 10207, <span class="k">"total_mb"</span>: 16384 },
+  <span class="k">"system"</span>: { <span class="k">"uptime_seconds"</span>: 86400 }
+}</pre>
+  </section>
+
+  <section class="sec" aria-labelledby="h-req">
+    <div class="sec-head">
+      <p class="eyebrow">Cosa serve</p>
+      <h2 id="h-req">Un doppio clic e parte</h2>
+      <p>Il launcher installa le dipendenze e, se vuoi, anche LibreHardwareMonitor per la temperatura della CPU.</p>
+    </div>
+    <div class="specs">
+      <div class="spec"><span class="k">Sistema</span><span class="v">Windows + Python</span><span class="s">avvio con <code>start_server.bat</code></span></div>
+      <div class="spec"><span class="k">GPU</span><span class="v">NVIDIA</span><span class="s">letta con <code>nvidia-smi</code></span></div>
+      <div class="spec"><span class="k">Rete</span><span class="v">WiFi 2,4 GHz</span><span class="s">PC e monitor sulla stessa rete</span></div>
+      <div class="spec"><span class="k">Assistenza</span><span class="v">localhost:9000</span><span class="s">stato del sistema e segnalazione con un clic</span></div>
+    </div>
+  </section>
+
+  <section class="contact" id="contatti" aria-labelledby="h-contatti">
+    <p class="eyebrow">Contatti</p>
+    <h2 id="h-contatti">Ti interessa?<br><em>Scrivimi.</em></h2>
+    <p>Per averne uno, per chiedere del firmware o per una versione con viste su misura. Lascia i tuoi dati e ti ricontatto personalmente.</p>
+    <form class="lead" id="leadForm" novalidate>
+      <label class="fld"><span>Nome</span><input type="text" name="nome" autocomplete="name" required maxlength="100"></label>
+      <label class="fld"><span>Email</span><input type="email" name="email" autocomplete="email" required maxlength="200"></label>
+      <fieldset class="full">
+        <legend>Cosa ti interessa</legend>
+        <div class="chips">
+          <label><input type="radio" name="interesse" value="Acquistarne uno" checked><span>Acquistarne uno</span></label>
+          <label><input type="radio" name="interesse" value="Firmware e codice"><span>Firmware e codice</span></label>
+          <label><input type="radio" name="interesse" value="Versione su misura"><span>Versione su misura</span></label>
+          <label><input type="radio" name="interesse" value="Altro"><span>Altro</span></label>
+        </div>
+      </fieldset>
+      <label class="fld full"><span>Messaggio (facoltativo)</span><textarea name="messaggio" maxlength="2000"></textarea></label>
+      <label class="hp" aria-hidden="true">Non compilare<input type="text" name="sito" tabindex="-1" autocomplete="off"></label>
+      <div class="row full">
+        <button class="btn primary" type="submit" id="leadSend">Invia richiesta</button>
+        <p class="form-note" id="leadNote" role="status">Userò i tuoi dati solo per risponderti.</p>
+        <a class="btn" id="leadFallback" href="#" target="_blank" rel="noopener" hidden>Apri il modulo precompilato</a>
+      </div>
+    </form>
+    <div class="sent" id="leadSent" hidden tabindex="-1">
+      <h3>Richiesta inviata</h3>
+      <p>Grazie! Ti rispondo all'indirizzo che hai indicato, di solito entro un paio di giorni.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>Double OLED Gaming Monitor · firmware ESP32 + server Python</span>
+    <span style="font-family:var(--mono)">v1.0</span>
+  </footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // Font 5x7 di Adafruit GFX (glcdfont), caratteri da 0x20 a 0x7E: 5 colonne, bit 0 in alto
+  const FONT = [
+    0x00,0x00,0x00,0x00,0x00, 0x00,0x00,0x5F,0x00,0x00, 0x00,0x07,0x00,0x07,0x00, 0x14,0x7F,0x14,0x7F,0x14,
+    0x24,0x2A,0x7F,0x2A,0x12, 0x23,0x13,0x08,0x64,0x62, 0x36,0x49,0x56,0x20,0x50, 0x00,0x08,0x07,0x03,0x00,
+    0x00,0x1C,0x22,0x41,0x00, 0x00,0x41,0x22,0x1C,0x00, 0x2A,0x1C,0x7F,0x1C,0x2A, 0x08,0x08,0x3E,0x08,0x08,
+    0x00,0x80,0x70,0x30,0x00, 0x08,0x08,0x08,0x08,0x08, 0x00,0x00,0x60,0x60,0x00, 0x20,0x10,0x08,0x04,0x02,
+    0x3E,0x51,0x49,0x45,0x3E, 0x00,0x42,0x7F,0x40,0x00, 0x72,0x49,0x49,0x49,0x46, 0x21,0x41,0x49,0x4D,0x33,
+    0x18,0x14,0x12,0x7F,0x10, 0x27,0x45,0x45,0x45,0x39, 0x3C,0x4A,0x49,0x49,0x31, 0x41,0x21,0x11,0x09,0x07,
+    0x36,0x49,0x49,0x49,0x36, 0x46,0x49,0x49,0x29,0x1E, 0x00,0x00,0x14,0x00,0x00, 0x00,0x40,0x34,0x00,0x00,
+    0x00,0x08,0x14,0x22,0x41, 0x14,0x14,0x14,0x14,0x14, 0x00,0x41,0x22,0x14,0x08, 0x02,0x01,0x59,0x09,0x06,
+    0x3E,0x41,0x5D,0x59,0x4E, 0x7C,0x12,0x11,0x12,0x7C, 0x7F,0x49,0x49,0x49,0x36, 0x3E,0x41,0x41,0x41,0x22,
+    0x7F,0x41,0x41,0x41,0x3E, 0x7F,0x49,0x49,0x49,0x41, 0x7F,0x09,0x09,0x09,0x01, 0x3E,0x41,0x41,0x51,0x73,
+    0x7F,0x08,0x08,0x08,0x7F, 0x00,0x41,0x7F,0x41,0x00, 0x20,0x40,0x41,0x3F,0x01, 0x7F,0x08,0x14,0x22,0x41,
+    0x7F,0x40,0x40,0x40,0x40, 0x7F,0x02,0x1C,0x02,0x7F, 0x7F,0x04,0x08,0x10,0x7F, 0x3E,0x41,0x41,0x41,0x3E,
+    0x7F,0x09,0x09,0x09,0x06, 0x3E,0x41,0x51,0x21,0x5E, 0x7F,0x09,0x19,0x29,0x46, 0x26,0x49,0x49,0x49,0x32,
+    0x03,0x01,0x7F,0x01,0x03, 0x3F,0x40,0x40,0x40,0x3F, 0x1F,0x20,0x40,0x20,0x1F, 0x3F,0x40,0x38,0x40,0x3F,
+    0x63,0x14,0x08,0x14,0x63, 0x03,0x04,0x78,0x04,0x03, 0x61,0x59,0x49,0x4D,0x43, 0x00,0x7F,0x41,0x41,0x41,
+    0x02,0x04,0x08,0x10,0x20, 0x00,0x41,0x41,0x41,0x7F, 0x04,0x02,0x01,0x02,0x04, 0x40,0x40,0x40,0x40,0x40,
+    0x00,0x03,0x07,0x08,0x00, 0x20,0x54,0x54,0x78,0x40, 0x7F,0x28,0x44,0x44,0x38, 0x38,0x44,0x44,0x44,0x28,
+    0x38,0x44,0x44,0x28,0x7F, 0x38,0x54,0x54,0x54,0x18, 0x00,0x08,0x7E,0x09,0x02, 0x18,0xA4,0xA4,0x9C,0x78,
+    0x7F,0x08,0x04,0x04,0x78, 0x00,0x44,0x7D,0x40,0x00, 0x20,0x40,0x40,0x3D,0x00, 0x7F,0x10,0x28,0x44,0x00,
+    0x00,0x41,0x7F,0x40,0x00, 0x7C,0x04,0x78,0x04,0x78, 0x7C,0x08,0x04,0x04,0x78, 0x38,0x44,0x44,0x44,0x38,
+    0xFC,0x18,0x24,0x24,0x18, 0x18,0x24,0x24,0x18,0xFC, 0x7C,0x08,0x04,0x04,0x08, 0x48,0x54,0x54,0x54,0x24,
+    0x04,0x04,0x3F,0x44,0x24, 0x3C,0x40,0x40,0x20,0x7C, 0x1C,0x20,0x40,0x20,0x1C, 0x3C,0x40,0x30,0x40,0x3C,
+    0x44,0x28,0x10,0x28,0x44, 0x4C,0x90,0x90,0x90,0x7C, 0x44,0x64,0x54,0x4C,0x44, 0x00,0x08,0x36,0x41,0x00,
+    0x00,0x00,0x77,0x00,0x00, 0x00,0x41,0x36,0x08,0x00, 0x02,0x01,0x02,0x04,0x02
+  ];
+
+  const W = 128, H = 64;
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const smooth = t => t * t * (3 - 2 * t);
+  const rnd = v => Math.floor(v + 0.5);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Buffer 128x64 con le primitive di Adafruit GFX usate dal firmware
+  class Gfx {
+    constructor() { this.b = new Uint8Array(W * H); this.cx = 0; this.cy = 0; this.s = 1; this.c = 1; }
+    clear() { this.b.fill(0); }
+    px(x, y, c = 1) { if (x >= 0 && x < W && y >= 0 && y < H) this.b[y * W + x] = c; }
+    fillRect(x, y, w, h, c = 1) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) this.px(i, j, c); }
+    drawRect(x, y, w, h, c = 1) {
+      this.fillRect(x, y, w, 1, c); this.fillRect(x, y + h - 1, w, 1, c);
+      this.fillRect(x, y, 1, h, c); this.fillRect(x + w - 1, y, 1, h, c);
+    }
+    line(x0, y0, x1, y1, c = 1) {
+      const dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1, dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy;
+      for (;;) {
+        this.px(x0, y0, c);
+        if (x0 === x1 && y0 === y1) break;
+        const e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+      }
+    }
+    fillCircle(x0, y0, r, c = 1) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (dx * dx + dy * dy <= r * r + r) this.px(x0 + dx, y0 + dy, c);
+    }
+    cursor(x, y) { this.cx = x; this.cy = y; }
+    glyph(x, y, ch) {
+      let code = ch.charCodeAt(0);
+      if (code < 32 || code > 126) code = 63;
+      const o = (code - 32) * 5, s = this.s;
+      for (let i = 0; i < 5; i++) {
+        const col = FONT[o + i];
+        for (let j = 0; j < 8; j++) if ((col >> j) & 1) this.fillRect(x + i * s, y + j * s, s, s, this.c);
+      }
+    }
+    print(str) {
+      for (const ch of String(str)) {
+        if (ch === "\n") { this.cx = 0; this.cy += 8 * this.s; continue; }
+        if (this.cx + 6 * this.s > W) { this.cx = 0; this.cy += 8 * this.s; }
+        this.glyph(this.cx, this.cy, ch);
+        this.cx += 6 * this.s;
+      }
+    }
+    width(str) { return String(str).length * 6 * this.s; }
+    printRight(str, xr, y) { this.cursor(xr - this.width(str), y); this.print(str); }
+    printCenter(str, y) { this.cursor(Math.trunc((W - this.width(str)) / 2), y); this.print(str); }
+  }
+
+  // ---------- Porting di main.ino ----------
+  const CPU_WARN = 70, CPU_CRIT = 85, GPU_WARN = 75, GPU_CRIT = 85, STALE = 8000, TOAST_MS = 1500;
+  const VIEWS = ["OVERVIEW", "TEMPS", "GRAPHS", "NETWORK"];
+  const HIST = 128;
+
+  function drawBar(d, x, y, w, h, pct) {
+    pct = clamp(pct, 0, 100);
+    d.drawRect(x, y, w, h);
+    const fill = Math.trunc((w - 4) * pct / 100 + 0.5);
+    if (fill > 0) d.fillRect(x + 2, y + 2, fill, h - 4);
+    for (let k = 1; k <= 3; k++) d.fillRect(x + 2 + Math.trunc((w - 4) * k / 4), y + h, 1, 2);
+  }
+  const tempLevel = (t, warn, crit) => t >= crit ? 2 : t >= warn ? 1 : 0;
+  const blinkOn = now => Math.floor(now / 500) % 2 === 0;
+
+  function drawMetric(d, y, label, info, pct, temp, level, now) {
+    d.s = 1;
+    d.fillRect(0, y, label.length * 6 + 3, 9, 1);
+    d.c = 0; d.cursor(2, y + 1); d.print(label);
+    d.c = 1; d.cursor(0, y + 11); d.print(info);
+    if (temp > 0) {
+      const x = d.width(info) + 8;
+      const buf = (level === 2 ? "!" : "") + rnd(temp) + "C";
+      const w = d.width(buf);
+      if (level === 1 || (level === 2 && blinkOn(now))) { d.fillRect(x - 2, y + 10, w + 4, 10, 1); d.c = 0; }
+      d.cursor(x, y + 11); d.print(buf); d.c = 1;
+    }
+    d.s = 2; d.printRight(rnd(pct) + "%", W, y); d.s = 1;
+    drawBar(d, 0, y + 21, W, 8, pct);
+  }
+  function drawWifiBars(d, x, y, rssi) {
+    const level = rssi >= -55 ? 4 : rssi >= -65 ? 3 : rssi >= -75 ? 2 : rssi >= -85 ? 1 : 0;
+    for (let i = 0; i < 4; i++) {
+      const h = 2 + i * 2, bx = x + i * 4;
+      if (i < level) d.fillRect(bx, y + 8 - h, 3, h); else d.fillRect(bx, y + 7, 3, 1);
+    }
+  }
+  function drawLabel(d, label) {
+    d.s = 1; d.fillRect(0, 0, label.length * 6 + 3, 9, 1);
+    d.c = 0; d.cursor(2, 1); d.print(label); d.c = 1;
+  }
+
+  class Monitor {
+    constructor() {
+      this.view = 0; this.graphShowTemp = false; this.maxCpu = 0; this.maxGpu = 0;
+      this.hCpuUse = new Uint8Array(HIST); this.hCpuTemp = new Uint8Array(HIST);
+      this.hGpuUse = new Uint8Array(HIST); this.hGpuTemp = new Uint8Array(HIST);
+      this.head = 0; this.count = 0;
+      this.stats = null; this.hasData = false; this.ws = false; this.lastUpdate = 0;
+      this.toastText = ""; this.toastUntil = 0;
+      this.rssi = -58; this.host = "192.168.1.100"; this.port = 9000; this.ssid = "Casa-WiFi"; this.ip = "192.168.1.57";
+    }
+    receive(s, now) { this.stats = s; this.pushHistory(); this.lastUpdate = now; this.hasData = true; this.ws = true; }
+    pushHistory() {
+      const s = this.stats, h = this.head;
+      this.hCpuUse[h] = clamp(rnd(s.cpu.usage), 0, 100);
+      this.hCpuTemp[h] = clamp(rnd(s.cpu.temperature), 0, 255);
+      this.hGpuUse[h] = clamp(rnd(s.gpu.usage), 0, 100);
+      this.hGpuTemp[h] = clamp(rnd(s.gpu.temperature), 0, 255);
+      this.head = (h + 1) % HIST;
+      if (this.count < HIST) this.count++;
+      if (s.cpu.temperature > this.maxCpu) this.maxCpu = s.cpu.temperature;
+      if (s.gpu.temperature > this.maxGpu) this.maxGpu = s.gpu.temperature;
+    }
+    isLive(now) { return this.ws && this.hasData && now - this.lastUpdate <= STALE; }
+    showToast(t, now) { this.toastText = t; this.toastUntil = now + TOAST_MS; }
+    drawToast(d, now) {
+      if (this.toastUntil - now <= 0) return;
+      d.fillRect(0, 53, W, 11, 1); d.s = 1; d.c = 0; d.printCenter(this.toastText, 55); d.c = 1;
+    }
+    drawOffline(d1, d2, noData, now) {
+      d1.clear(); d1.c = 1; d1.s = 2;
+      d1.printCenter("PC", 6); d1.printCenter(noData ? "NO DATA" : "OFFLINE", 26);
+      d1.s = 1; d1.printCenter(this.host + ":" + this.port, 52);
+      d2.clear(); d2.c = 1; d2.s = 1;
+      d2.printCenter("Waiting for PC...", 8);
+      drawWifiBars(d2, 40, 28, this.rssi);
+      d2.cursor(60, 28); d2.print(this.rssi + " dBm");
+      d2.printCenter(this.ip, 48);
+      this.drawToast(d2, now);
+    }
+    drawTempPage(d, label, temp, maxTemp, warn, crit, now) {
+      d.clear(); d.c = 1; drawLabel(d, label);
+      d.printRight("MAX " + rnd(maxTemp) + "C", W, 1);
+      const level = tempLevel(temp, warn, crit);
+      const buf = temp > 0 ? (level === 2 ? "!" : "") + rnd(temp) + "C" : "--";
+      d.s = 4;
+      const w = d.width(buf), x = Math.trunc((W - w) / 2);
+      if (level === 1 || (level === 2 && blinkOn(now))) { d.fillRect(x - 4, 12, w + 8, 36, 1); d.c = 0; }
+      d.cursor(x, 14); d.print(buf); d.c = 1; d.s = 1;
+      drawBar(d, 0, 52, W, 8, (temp - 20) * 100 / 80);
+    }
+    drawGraph(d, label, hist, lo, hi, mark, unit, current) {
+      d.clear(); d.c = 1; drawLabel(d, label);
+      d.s = 2; d.printRight(rnd(current) + unit, W, 0); d.s = 1;
+      d.drawRect(0, 20, W, 44);
+      const yFor = v => 61 - Math.trunc((clamp(v, lo, hi) - lo) * 39 / (hi - lo));
+      const ym = yFor(mark);
+      for (let x = 2; x < W - 2; x += 4) d.px(x, ym);
+      const shown = Math.min(this.count, W - 4);
+      let px = -1, py = 0;
+      for (let i = this.count - shown; i < this.count; i++) {
+        const v = hist[(this.head - this.count + i + HIST) % HIST];
+        const x = W - 2 - (this.count - 1 - i), y = yFor(v);
+        if (px >= 0) d.line(px, py, x, y); else d.px(x, y);
+        px = x; py = y;
+      }
+    }
+    drawNetwork(d1, d2, now) {
+      d1.clear(); d1.c = 1; drawLabel(d1, "WIFI");
+      d1.cursor(0, 14); d1.print(this.ssid.slice(0, 21));
+      d1.cursor(0, 26); d1.print(this.ip);
+      d1.cursor(0, 38); d1.print("RSSI " + this.rssi + " dBm");
+      drawWifiBars(d1, 108, 38, this.rssi);
+      d2.clear(); d2.c = 1; drawLabel(d2, "PC LINK");
+      d2.cursor(0, 14); d2.print(this.host + ":" + this.port);
+      d2.cursor(0, 26); d2.print(this.ws ? "WS: connected" : "WS: DOWN");
+      d2.cursor(0, 38); d2.print("Data: " + ((now - this.lastUpdate) / 1000).toFixed(1) + "s ago");
+    }
+    drawOverview(d1, d2, now) {
+      const s = this.stats;
+      const cpuLevel = tempLevel(s.cpu.temperature, CPU_WARN, CPU_CRIT);
+      const gpuLevel = tempLevel(s.gpu.temperature, GPU_WARN, GPU_CRIT);
+      d1.clear(); d1.c = 1;
+      drawMetric(d1, 0, "CPU", (s.cpu.frequency / 1000).toFixed(1) + "GHz", s.cpu.usage, s.cpu.temperature, cpuLevel, now);
+      drawMetric(d1, 33, "GPU", (s.gpu.vram_used_mb / 1024).toFixed(1) + "GB", s.gpu.usage, s.gpu.temperature, gpuLevel, now);
+      d2.clear(); d2.c = 1; d2.s = 1;
+      drawWifiBars(d2, 0, 0, this.rssi);
+      d2.cursor(20, 0); d2.print(this.rssi + "dBm");
+      d2.printRight("PC", 112, 0);
+      d2.fillCircle(122, 4, 3);
+      drawMetric(d2, 12, "RAM", (s.ram.used_mb / 1024).toFixed(1) + "/" + (s.ram.total_mb / 1024).toFixed(1) + "GB", s.ram.usage_percent, 0, 0, now);
+      const up = s.system.uptime_seconds, days = Math.floor(up / 86400), hours = Math.floor((up % 86400) / 3600), mins = Math.floor((up % 3600) / 60);
+      const p2 = n => String(n).padStart(2, "0");
+      d2.s = 1; d2.cursor(0, 52);
+      d2.print(days > 0 ? `UP ${days}d ${p2(hours)}h ${p2(mins)}m` : `UP ${p2(hours)}h ${p2(mins)}m`);
+    }
+    draw(d1, d2, now) {
+      if (!this.isLive(now)) { this.drawOffline(d1, d2, this.ws && !this.hasData, now); return; }
+      const s = this.stats;
+      switch (this.view) {
+        case 1:
+          this.drawTempPage(d1, "CPU", s.cpu.temperature, this.maxCpu, CPU_WARN, CPU_CRIT, now);
+          this.drawTempPage(d2, "GPU", s.gpu.temperature, this.maxGpu, GPU_WARN, GPU_CRIT, now);
+          break;
+        case 2:
+          if (this.graphShowTemp) {
+            this.drawGraph(d1, "CPU TEMP", this.hCpuTemp, 20, 100, CPU_CRIT, "C", s.cpu.temperature);
+            this.drawGraph(d2, "GPU TEMP", this.hGpuTemp, 20, 100, GPU_CRIT, "C", s.gpu.temperature);
+          } else {
+            this.drawGraph(d1, "CPU USE", this.hCpuUse, 0, 100, 50, "%", s.cpu.usage);
+            this.drawGraph(d2, "GPU USE", this.hGpuUse, 0, 100, 50, "%", s.gpu.usage);
+          }
+          break;
+        case 3: this.drawNetwork(d1, d2, now); break;
+        default: this.drawOverview(d1, d2, now);
+      }
+      this.drawToast(d2, now);
+    }
+  }
+
+  // Schermate di avvio di setup(): showBootScreen() e poi "Gaming" con IP e RSSI
+  function drawBoot(d1, d2, phase, m) {
+    d1.clear(); d1.c = 1; d2.clear(); d2.c = 1;
+    if (phase === 0) {
+      d1.s = 2; d1.cursor(0, 0); d1.print("Double");
+      d1.s = 1; d1.cursor(0, 24); d1.print("OLED Monitor");
+    } else {
+      d1.s = 2; d1.cursor(10, 0); d1.print("Gaming");
+      d1.s = 1; d1.cursor(5, 24); d1.print("IP: " + m.ip);
+      d1.cursor(5, 36); d1.print("RSSI: " + m.rssi + " dBm");
+    }
+    d2.s = 2; d2.cursor(0, 0); d2.print("V1.0"); d2.s = 1;
+  }
+
+  // ---------- Dati di prova, come get_mock_stats() in pc_server.py ----------
+  const tri = (t, p, lo, hi) => { const ph = (((t % p) + p) % p) / p; return lo + (hi - lo) * (1 - Math.abs(2 * ph - 1)); };
+  const r1 = v => Math.round(v * 10) / 10;
+  const T0 = 600;
+  function mock(t) {
+    const ram = Math.trunc(tri(t, 90, 6000, 14000));
+    return {
+      cpu: { usage: r1(tri(t, 20, 5, 100)), temperature: r1(tri(t, 60, 40, 95)), frequency: Math.trunc(tri(t, 15, 2000, 4800)) },
+      gpu: { usage: r1(tri(t + 7, 25, 0, 100)), temperature: r1(tri(t + 30, 60, 45, 95)), vram_used_mb: Math.trunc(tri(t, 40, 500, 8000)) },
+      ram: { usage_percent: r1(ram * 100 / 16384), used_mb: ram, total_mb: 16384 },
+      system: { uptime_seconds: Math.trunc(t - T0) + 93784 }
+    };
+  }
+  function prefill(m, tEnd, now) { for (let i = HIST - 1; i >= 0; i--) m.receive(mock(tEnd - i * 2.5), now); }
+
+  // ---------- Resa su canvas: pixel con griglia e alone ----------
+  const PIX = "#e6f4ff";
+  function blit(g, canvas) {
+    const ctx = canvas.getContext("2d");
+    const S = canvas.width / W;
+    if (!canvas._off) { canvas._off = document.createElement("canvas"); canvas._off.width = canvas.width; canvas._off.height = canvas.height; }
+    const off = canvas._off, o = off.getContext("2d");
+    o.clearRect(0, 0, off.width, off.height);
+    o.fillStyle = PIX;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (g.b[y * W + x]) o.fillRect(x * S, y * S, S - 1, S - 1);
+    ctx.globalAlpha = 1; ctx.filter = "none";
+    ctx.fillStyle = "#020304"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.globalAlpha = 0.6; ctx.filter = "blur(" + Math.round(S * 0.9) + "px)";
+    ctx.drawImage(off, 0, 0);
+    ctx.globalAlpha = 1; ctx.filter = "none";
+    ctx.drawImage(off, 0, 0);
+  }
+
+  // Titolo in pixel con lo stesso font dei display
+  (function pixTitle() {
+    const lines = ["DOUBLE", "OLED"];
+    let rects = "";
+    lines.forEach((text, row) => [...text].forEach((ch, k) => {
+      const o = (ch.charCodeAt(0) - 32) * 5;
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 7; j++)
+        if ((FONT[o + i] >> j) & 1) rects += `<rect x="${k * 6 + i + 0.07}" y="${row * 9 + j + 0.07}" width="0.86" height="0.86"/>`;
+    }));
+    const svg = document.getElementById("pixTitle");
+    svg.setAttribute("viewBox", "0 0 35 16");
+    svg.setAttribute("fill", "currentColor");
+    svg.innerHTML = rects;
+  })();
+
+  // ---------- Scena 3D guidata dallo scroll ----------
+  const stage = document.getElementById("stage"), track = document.getElementById("top"), cam = document.getElementById("cam");
+  const caps = [...document.querySelectorAll(".cap")];
+  const N = caps.length;
+  // Inquadrature per capitolo: rotazioni, zoom (s desktop, sN schermi stretti), punto a fuoco e esploso
+  const KF = [
+    { rx: 22, ry: -30, rz: 3, s: 0.92, sN: 1.0, fx: 0, fy: 0, ex: 0 },
+    { rx: 6, ry: -10, rz: 0, s: 1.02, sN: 1.0, fx: 0, fy: 0, ex: 0 },
+    { rx: 2, ry: -6, rz: 0, s: 1.6, sN: 2.2, fx: -223, fy: 0, ex: 0 },
+    { rx: 8, ry: -16, rz: 0, s: 1.3, sN: 1.55, fx: 241, fy: 0, ex: 0 },
+    { rx: 20, ry: -42, rz: 0, s: 0.62, sN: 0.62, fx: 40, fy: 0, ex: 1 },
+    { rx: 16, ry: 24, rz: -2, s: 0.86, sN: 0.95, fx: 0, fy: 0, ex: 0 }
+  ];
+  const LAYERS = [
+    ["L-esp", -44, 40], ["L-enc", -14, 110], ["L-oled1", -6, 160], ["L-oled2", -6, 160], ["L-plate", 0, 250], ["L-knob", 2, 340]
+  ].map(([id, a, b]) => ({ el: document.getElementById(id), a, b, tag: document.querySelector("#" + id + " .tag") }));
+
+  let vw = 0, vh = 0, wide = true, cx = 0, cy = 0, fit = 1;
+  function layout() {
+    vw = stage.clientWidth; vh = stage.clientHeight; wide = vw >= 1000;
+    cx = wide ? vw * 0.64 : vw / 2;
+    cy = wide ? vh * 0.5 : vh * 0.34;
+    fit = wide ? Math.min(vw * 0.54 / 840, vh * 0.55 / 230) : Math.min((vw - 24) / 840, vh * 0.3 / 230);
+    stage.style.perspectiveOrigin = `${cx}px ${cy}px`;
+    stage.style.setProperty("--lx", (cx / vw * 100).toFixed(1) + "%");
+    layoutGallery();
+  }
+
+  // Posizione nel racconto: 0..N-1, ogni capitolo vale un'altezza di schermo
+  const chapterPos = () => clamp(-track.getBoundingClientRect().top / vh, 0, N - 1);
+  // Scorrimento locale dentro un capitolo (0..1) mentre l'inquadratura è ferma
+  const local = (c, i) => clamp((c - (i - 0.3)) / 0.6, 0, 1);
+
+  let mx = 0, my = 0, pmx = 0, pmy = 0;
+  if (!reduced) addEventListener("pointermove", e => { mx = e.clientX / innerWidth * 2 - 1; my = e.clientY / innerHeight * 2 - 1; }, { passive: true });
+
+  function camera(c) {
+    const k = Math.min(Math.floor(c), N - 2), f = c - k;
+    const t = smooth(clamp((f - 0.3) / 0.4, 0, 1));
+    const A = KF[k], B = KF[k + 1];
+    const g = key => lerp(A[key], B[key], t);
+    const s = lerp(wide ? A.s : A.sN, wide ? B.s : B.sN, t) * fit;
+    pmx = lerp(pmx, mx, 0.08); pmy = lerp(pmy, my, 0.08);
+    const rx = g("rx") - pmy * 3, ry = g("ry") + pmx * 4, rz = g("rz");
+    const fx = g("fx"), fy = g("fy"), ex = smooth(g("ex"));
+    const ox = 420 + fx, oy = 115 + fy;
+    cam.style.transformOrigin = `${ox}px ${oy}px`;
+    cam.style.transform = `translate3d(${cx - ox}px, ${cy - oy}px, 0) scale3d(${s}, ${s}, ${s}) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg)`;
+    LAYERS.forEach(L => {
+      const z = lerp(L.a, L.b, ex);
+      L.el.style.transform = `translateZ(${z}px)`;
+      L.tag.style.opacity = clamp((ex - 0.6) / 0.4, 0, 1);
+    });
+    return ex;
+  }
+
+  function captions(c) {
+    caps.forEach((el, i) => {
+      const d = c - i;
+      const o = clamp(1 - (Math.abs(d) - 0.28) / 0.18, 0, 1);
+      el.style.opacity = o;
+      el.style.transform = (wide ? "translateY(calc(-50% + " : "translateY(calc(0% + ") + (-d * 60).toFixed(1) + "px))";
+      el.classList.toggle("on", o > 0.5);
+    });
+  }
+
+  // ---------- Stato dei display in base al capitolo ----------
+  const live = new Monitor();
+  const g1 = new Gfx(), g2 = new Gfx();
+  const scr1 = document.getElementById("scr1"), scr2 = document.getElementById("scr2");
+  const tOffset = T0 + 10.8 - performance.now() / 1000;
+  const simT = () => tOffset + performance.now() / 1000;
+  const bootStart = performance.now();
+  prefill(live, simT(), performance.now());
+  setInterval(() => live.receive(mock(simT()), performance.now()), 2500);
+
+  const thCpu = document.getElementById("thCpu"), thGpu = document.getElementById("thGpu"), thState = document.getElementById("thState");
+  const vItems = [...document.querySelectorAll("#vlist li")];
+  const knobTop = document.getElementById("knobTop");
+  let shownView = -1;
+  setThermo(thCpu, 60, CPU_WARN, CPU_CRIT); setThermo(thGpu, 64, GPU_WARN, GPU_CRIT);
+
+  function setThermo(row, t, warn, crit) {
+    const lvl = tempLevel(t, warn, crit);
+    row.classList.toggle("warn", lvl === 1); row.classList.toggle("crit", lvl === 2);
+    row.querySelector(".th-fill").style.width = clamp((t - 40) / 60 * 100, 0, 100) + "%";
+    row.querySelector(".val").textContent = rnd(t) + " °C";
+    return lvl;
+  }
+
+  function screens(c) {
+    const now = performance.now();
+    live.rssi = -58 + Math.round(Math.sin(now / 7000) * 2);
+    const since = now - bootStart;
+    if (since < 2600 && c < 0.5 && !reduced) {
+      drawBoot(g1, g2, since < 1300 ? 0 : 1, live);
+      blit(g1, scr1); blit(g2, scr2);
+      return;
+    }
+    const saved = live.stats;
+    let view = 0;
+    const u2 = local(c, 2), u3 = local(c, 3);
+
+    if (c > 1.5 && c < 2.5) {
+      const cpuT = 60 + 32 * u2, gpuT = 64 + 28 * u2;
+      live.stats = { ...saved, cpu: { usage: 55 + 42 * u2, temperature: cpuT, frequency: Math.trunc(4200 + 500 * u2) }, gpu: { usage: 60 + 39 * u2, temperature: gpuT, vram_used_mb: Math.trunc(4200 + 3000 * u2) } };
+      const a = setThermo(thCpu, cpuT, CPU_WARN, CPU_CRIT), b = setThermo(thGpu, gpuT, GPU_WARN, GPU_CRIT);
+      const lvl = Math.max(a, b);
+      thState.textContent = lvl === 2 ? "Critico · lampeggia con !" : lvl === 1 ? "Attenzione · in negativo" : "Tutto normale";
+      thState.style.color = lvl === 2 ? "var(--red)" : lvl === 1 ? "var(--amber)" : "";
+    }
+    if (c > 2.5 && c < 3.5) view = Math.min(3, Math.floor(u3 * 4));
+
+    knobTop.style.transform = `translateZ(18px) rotateZ(${(u3 * 270).toFixed(1)}deg)`;
+    if (c > 2.5 && c < 3.5 && view !== shownView) {
+      shownView = view;
+      live.showToast(`< ${VIEWS[view]} ${view + 1}/${VIEWS.length} >`, now);
+      vItems.forEach((li, i) => li.classList.toggle("cur", i === view));
+    }
+    if (!(c > 2.5 && c < 3.5)) shownView = -1;
+
+    live.view = view;
+    live.draw(g1, g2, now);
+    live.stats = saved;
+    blit(g1, scr1); blit(g2, scr2);
+  }
+
+  // ---------- Indice laterale ----------
+  const rail = document.getElementById("rail");
+  const railNames = ["Intro", "Panoramica", "Allarmi", "Encoder", "Dentro", "Fine"];
+  const railBtns = railNames.map((name, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.innerHTML = `<span>${name}</span><i></i>`; b.setAttribute("aria-label", name);
+    b.addEventListener("click", () => scrollTo({ top: track.offsetTop + i * vh + 2, behavior: reduced ? "auto" : "smooth" }));
+    rail.appendChild(b);
+    return b;
+  });
+
+  // ---------- Galleria orizzontale ----------
+  const hg = document.getElementById("schermate"), hgRow = document.getElementById("hgRow"), hgBar = document.getElementById("hgBar");
+  let hgMax = 0;
+  function layoutGallery() {
+    hgMax = Math.max(0, hgRow.scrollWidth - vw);
+    hg.style.height = (hgMax + vh) + "px";
+  }
+  function gallery() {
+    const r = hg.getBoundingClientRect();
+    const p = clamp(-r.top, 0, hgMax);
+    hgRow.style.transform = `translate3d(${-p}px, 0, 0)`;
+    hgBar.style.transform = `scaleX(${hgMax ? p / hgMax : 0})`;
+  }
+
+  const NOW = 100000;
+  const tBase = T0 + 40;
+  const base = () => { const m = new Monitor(); prefill(m, tBase, NOW - 1200); return m; };
+  const snap = (cpu, gpu, ram) => ({
+    cpu, gpu, ram: { usage_percent: r1(ram * 100 / 16384), used_mb: ram, total_mb: 16384 },
+    system: { uptime_seconds: 93784 + 4 * 3600 + 17 * 60 }
+  });
+  const shots = [
+    { tag: "OVERVIEW", title: "Panoramica", text: "Carico di CPU e GPU con frequenza, VRAM e temperatura. Sul secondo display RAM, WiFi, stato del PC e uptime.",
+      setup: m => { m.stats = snap({ usage: 45.2, temperature: 62.4, frequency: 3400 }, { usage: 78.5, temperature: 71.0, vram_used_mb: 4096 }, 10207); } },
+    { tag: "OVERVIEW", title: "Allarme temperatura", text: "CPU sopra 70 °C in negativo, GPU oltre 85 °C con il \"!\" che lampeggia ogni mezzo secondo.",
+      setup: m => { m.stats = snap({ usage: 97.0, temperature: 74.2, frequency: 4700 }, { usage: 99.0, temperature: 88.3, vram_used_mb: 7420 }, 13100); } },
+    { tag: "TEMPS", title: "Temperature", text: "Valore a tutto schermo, massimo dall'accensione e barra da 20 a 100 °C. Premi per azzerare i massimi.",
+      setup: m => { m.view = 1; m.stats = snap({ usage: 38, temperature: 66.4, frequency: 3900 }, { usage: 99, temperature: 88.2, vram_used_mb: 7420 }, 9800); } },
+    { tag: "GRAPHS", title: "Grafici di utilizzo", text: "Gli ultimi 128 campioni, circa 5 minuti. La linea tratteggiata segna il 50%.",
+      setup: m => { m.view = 2; } },
+    { tag: "GRAPHS", title: "Grafici di temperatura", text: "Da 20 a 100 °C, con la soglia critica di 85 °C tratteggiata. Premi l'encoder per passare da uno all'altro.",
+      setup: m => { m.view = 2; m.graphShowTemp = true; } },
+    { tag: "NETWORK", title: "Rete", text: "WiFi, IP e segnale dell'ESP32 a sinistra, collegamento al PC ed età dell'ultimo dato a destra.",
+      setup: m => { m.view = 3; } },
+    { tag: "TOAST", title: "Cambio vista", text: "Ruotando l'encoder il nome della vista compare per un secondo e mezzo in fondo al display 2.",
+      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 2/4 >", NOW - 200); } }
+  ];
+  shots.forEach((s, i) => {
+    const m = base(); s.setup(m);
+    const a = new Gfx(), b = new Gfx();
+    m.draw(a, b, NOW);
+    const fig = document.createElement("figure");
+    fig.className = "card";
+    fig.innerHTML = `<div class="pair"><canvas width="512" height="256" aria-label="Display 1: ${s.title}"></canvas><canvas width="512" height="256" aria-label="Display 2: ${s.title}"></canvas></div>
+      <figcaption style="display:grid;gap:8px"><span class="t"><b>${String(i + 1).padStart(2, "0")}</b> · ${s.tag}</span><h3>${s.title}</h3><p>${s.text}</p></figcaption>`;
+    const cv = fig.querySelectorAll("canvas");
+    blit(a, cv[0]); blit(b, cv[1]);
+    hgRow.appendChild(fig);
+  });
+
+  // ---------- Ciclo principale ----------
+  const progress = document.getElementById("progress");
+  let lastScreens = 0, lastC = -1;
+  function frame(ts) {
+    const c = chapterPos();
+    camera(c);
+    captions(c);
+    gallery();
+    const doc = document.documentElement;
+    progress.style.transform = `scaleX(${clamp(scrollY / Math.max(1, doc.scrollHeight - innerHeight), 0, 1)})`;
+    const cur = Math.round(c);
+    railBtns.forEach((b, i) => b.classList.toggle("cur", i === cur));
+    const tr = track.getBoundingClientRect();
+    rail.classList.toggle("hide", tr.bottom < vh * 0.5);
+    if (ts - lastScreens > 120 || Math.abs(c - lastC) > 0.01) {
+      if (tr.bottom > 0) screens(c);
+      lastScreens = ts; lastC = c;
+    }
+    requestAnimationFrame(frame);
+  }
+  addEventListener("resize", layout);
+  layout();
+  requestAnimationFrame(frame);
+  if (document.fonts) document.fonts.ready.then(layout);
+
+  // ---------- Modulo contatti ----------
+  // Le risposte vanno in un Google Form (e da lì nel suo Google Sheet). Vedi landing/README.md.
+  // FORM_ID è la parte dell'URL tra /d/e/ e /viewform; gli entry.* si leggono dal link precompilato.
+  const GOOGLE_FORM = {
+    FORM_ID: "1FAIpQLScOR3qFDndiFD6N7wWPzHPb3y22_4JNrCf-KAb6WcQCTMfOPw",
+    fields: { nome: "entry.1435987774", email: "entry.1421002448", interesse: "entry.1865417119", messaggio: "entry.974946916" }
+  };
+  const formReady = GOOGLE_FORM.FORM_ID !== "" && !Object.values(GOOGLE_FORM.fields).includes("entry.0");
+
+  const form = document.getElementById("leadForm");
+  const note = document.getElementById("leadNote");
+  const sendBtn = document.getElementById("leadSend");
+  const fallback = document.getElementById("leadFallback");
+  const setNote = (text, err) => { note.textContent = text; note.classList.toggle("err", !!err); };
+
+  form.addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const data = new FormData(form);
+    if (data.get("sito")) return;  // campo trappola per i bot
+    const nome = String(data.get("nome")).trim(), email = String(data.get("email")).trim();
+    if (!nome) { setNote("Scrivi il tuo nome.", true); form.nome.focus(); return; }
+    if (!form.email.checkValidity() || !email) { setNote("Controlla l'indirizzo email.", true); form.email.focus(); return; }
+    if (!formReady) { setNote("Il modulo non è ancora attivo. Riprova tra qualche giorno.", true); return; }
+
+    const body = new URLSearchParams();
+    for (const key of Object.keys(GOOGLE_FORM.fields)) body.append(GOOGLE_FORM.fields[key], String(data.get(key) || "").trim());
+    const base = "https://docs.google.com/forms/d/e/" + GOOGLE_FORM.FORM_ID;
+    sendBtn.disabled = true; setNote("Invio in corso...");
+    fallback.hidden = true;
+    try {
+      // Google non manda intestazioni CORS: con no-cors la risposta è opaca, conta solo che la richiesta parta.
+      // Nell'anteprima Artifact di claude.ai la richiesta arriva a Google ma la promessa non si risolve mai:
+      // dopo 5 s la si considera partita. Un errore vero (rete, CSP) rifiuta subito e porta al ripiego.
+      const timeout = new Promise(resolve => setTimeout(resolve, 5000));
+      await Promise.race([fetch(base + "/formResponse", { method: "POST", mode: "no-cors", body }), timeout]);
+      form.hidden = true;
+      const sent = document.getElementById("leadSent");
+      sent.hidden = false; sent.focus();
+    } catch (e) {
+      // Ripiego: il Form di Google precompilato in una nuova scheda, basta premere Invia
+      sendBtn.disabled = false;
+      fallback.href = base + "/viewform?usp=pp_url&" + body.toString();
+      fallback.hidden = false;
+      setNote("Invio diretto non riuscito. Apri il modulo precompilato e premi Invia.", true);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
