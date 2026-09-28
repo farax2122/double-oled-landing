@@ -376,18 +376,18 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <article class="cap" data-i="0">
         <p class="eyebrow">ESP32 · 2 × OLED 128×64</p>
         <h1 style="margin:0"><span class="sr">Double OLED Gaming Monitor</span><svg class="pix" id="pixTitle" aria-hidden="true"></svg></h1>
-        <p>Le metriche del PC su due display accanto alla tastiera. CPU, GPU, RAM e temperature sempre in vista, senza overlay sopra il gioco.</p>
+        <p>Abbiamo portato le metriche del PC fuori dallo schermo: due display accanto alla tastiera con CPU, GPU, RAM e temperature sempre in vista. Nessun overlay sopra il gioco, nessun Alt+Tab.</p>
         <div class="hint"><span class="mouse"></span>Scorri per scoprirlo</div>
       </article>
       <article class="cap" data-i="1">
         <span class="num">01 · Panoramica</span>
         <h2>Tutto il PC in <em>un colpo d'occhio</em></h2>
-        <p>A sinistra CPU e GPU: carico, frequenza, VRAM e temperatura. A destra RAM, segnale WiFi, stato del PC e uptime. Si aggiornano ogni 2,5 secondi.</p>
+        <p>Sul primo display CPU e GPU: carico, frequenza, VRAM e temperatura. Sul secondo RAM, segnale WiFi, stato del PC e uptime. Tutto si aggiorna ogni 2,5 secondi.</p>
       </article>
       <article class="cap" data-i="2">
         <span class="num">02 · Allarmi</span>
         <h2>Allarmi che si vedono <em>anche senza colori</em></h2>
-        <p>Gli OLED sono monocromatici. Sopra la soglia la temperatura passa in negativo, oltre 85 °C lampeggia con il "!". Continua a scorrere e scalda il PC.</p>
+        <p>Gli OLED sono monocromatici, così abbiamo progettato allarmi che non hanno bisogno del colore: sopra la soglia la temperatura passa in negativo, oltre 85 °C lampeggia con il "!". Continua a scorrere e scalda il PC.</p>
         <div class="thermo">
           <div class="th-row" id="thCpu"><span class="lbl">CPU</span><div class="th-track"><div class="th-fill"></div><div class="th-mark" style="left:50%"><span>70°</span></div><div class="th-mark" style="left:75%"><span>85°</span></div></div><span class="val">60 °C</span></div>
           <div class="th-row" id="thGpu"><span class="lbl">GPU</span><div class="th-track"><div class="th-fill"></div><div class="th-mark" style="left:58.33%"><span>75°</span></div><div class="th-mark" style="left:75%"><span>85°</span></div></div><span class="val">64 °C</span></div>
@@ -397,7 +397,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <article class="cap" data-i="3">
         <span class="num">03 · Encoder</span>
         <h2>Una manopola, <em>quattro viste</em></h2>
-        <p>Ruota per cambiare vista. Premi per agire su quella corrente.</p>
+        <p>Un solo controllo, pensato per usarlo senza guardare: ruota per cambiare vista, premi per agire su quella corrente.</p>
         <ol class="vlist" id="vlist">
           <li class="cur"><i>1/4</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
           <li><i>2/4</i><b>TEMPS</b><span>premi: azzera i massimi</span></li>
@@ -408,12 +408,12 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <article class="cap" data-i="4">
         <span class="num">04 · Dentro</span>
         <h2>Tre componenti, <em>zero schede nel PC</em></h2>
-        <p>Un ESP32 con WiFi, due OLED SSD1306 e un encoder rotativo. I display hanno lo stesso indirizzo I2C, quindi ognuno ha il suo bus. Il PC non va aperto: basta la rete di casa.</p>
+        <p>Un ESP32 con WiFi, due OLED SSD1306 e un encoder rotativo. Abbiamo dato a ogni display il suo bus I2C, così funzionano in parallelo. Il PC non va aperto: basta la rete di casa.</p>
       </article>
       <article class="cap" data-i="5">
         <span class="num">05 · Sulla tua scrivania</span>
         <h2>Ne vuoi <em>uno anche tu?</em></h2>
-        <p>Scrivimi per averne uno, per il firmware o per una versione con viste su misura.</p>
+        <p>Contattaci per averne uno, per il firmware o per una versione con viste su misura.</p>
         <div class="btns"><a class="btn primary" href="#contatti">Mi interessa</a><a class="btn" href="#schermate">Tutte le schermate</a></div>
       </article>
     </div>
@@ -427,7 +427,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
         <p class="eyebrow">Le schermate</p>
         <h2 id="h-sch">Pixel per pixel,<br>come sul display</h2>
       </div>
-      <p>Ogni coppia è disegnata con lo stesso codice del firmware, display 1 a sinistra e display 2 a destra. Continua a scorrere per sfogliarle.</p>
+      <p>Quello che vedi qui è generato dallo stesso codice che gira sul dispositivo: display 1 a sinistra, display 2 a destra. Continua a scorrere per sfogliarle.</p>
     </div>
     <div class="hg-row" id="hgRow"></div>
     <div class="hg-bar"><i id="hgBar"></i></div>
@@ -439,11 +439,11 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     <div class="sec-head">
       <p class="eyebrow">Come funziona</p>
       <h2 id="h-come">Dal PC ai display in 2,5 secondi</h2>
-      <p>Il pacchetto qui sotto viaggia con lo stesso ritmo dei dati veri.</p>
+      <p>Un'architettura semplice, senza cloud e senza account: i dati restano sulla tua rete. Il pacchetto qui sotto viaggia allo stesso ritmo di quelli veri.</p>
     </div>
     <div class="flow">
       <div class="wire"><span class="packet"></span></div>
-      <div class="node"><div class="ic">PC</div><h3>Il server legge le metriche</h3><p>Un programma Python su Windows raccoglie CPU, RAM e uptime. La GPU arriva da <code>nvidia-smi</code>, la temperatura CPU da LibreHardwareMonitor.</p></div>
+      <div class="node"><div class="ic">PC</div><h3>Il nostro software legge le metriche</h3><p>Un leggero programma per Windows raccoglie CPU, RAM e uptime. La GPU arriva da <code>nvidia-smi</code>, la temperatura CPU da LibreHardwareMonitor.</p></div>
       <div class="node"><div class="ic">WS</div><h3>Le invia sulla rete di casa</h3><p>Un messaggio JSON su WebSocket, porta 9000. Se il PC si riavvia, l'ESP32 si ricollega da solo.</p></div>
       <div class="node"><div class="ic">ESP</div><h3>I display si aggiornano</h3><p>Ridisegno a ogni messaggio e ogni 500 ms, così gli allarmi lampeggiano a ritmo costante.</p></div>
     </div>
@@ -460,20 +460,20 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     <div class="sec-head">
       <p class="eyebrow">Cosa serve</p>
       <h2 id="h-req">Un doppio clic e parte</h2>
-      <p>Il launcher installa le dipendenze e, se vuoi, anche LibreHardwareMonitor per la temperatura della CPU.</p>
+      <p>Il nostro launcher installa tutto il necessario e, se vuoi, anche LibreHardwareMonitor per la temperatura della CPU.</p>
     </div>
     <div class="specs">
       <div class="spec"><span class="k">Sistema</span><span class="v">Windows + Python</span><span class="s">avvio con <code>start_server.bat</code></span></div>
       <div class="spec"><span class="k">GPU</span><span class="v">NVIDIA</span><span class="s">letta con <code>nvidia-smi</code></span></div>
       <div class="spec"><span class="k">Rete</span><span class="v">WiFi 2,4 GHz</span><span class="s">PC e monitor sulla stessa rete</span></div>
-      <div class="spec"><span class="k">Assistenza</span><span class="v">localhost:9000</span><span class="s">stato del sistema e segnalazione con un clic</span></div>
+      <div class="spec"><span class="k">Assistenza</span><span class="v">localhost:9000</span><span class="s">diagnosi del sistema e segnalazione al nostro supporto con un clic</span></div>
     </div>
   </section>
 
   <section class="contact" id="contatti" aria-labelledby="h-contatti">
     <p class="eyebrow">Contatti</p>
-    <h2 id="h-contatti">Ti interessa?<br><em>Scrivimi.</em></h2>
-    <p>Per averne uno, per chiedere del firmware o per una versione con viste su misura. Lascia i tuoi dati e ti ricontatto personalmente.</p>
+    <h2 id="h-contatti">Ti interessa?<br><em>Parliamone.</em></h2>
+    <p>Per ordinarne uno, per informazioni sul firmware o per una versione con viste su misura. Lasciaci i tuoi dati: ti risponde direttamente il nostro team.</p>
     <form class="lead" id="leadForm" novalidate>
       <label class="fld"><span>Nome</span><input type="text" name="nome" autocomplete="name" required maxlength="100"></label>
       <label class="fld"><span>Email</span><input type="email" name="email" autocomplete="email" required maxlength="200"></label>
@@ -490,18 +490,18 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <label class="hp" aria-hidden="true">Non compilare<input type="text" name="sito" tabindex="-1" autocomplete="off"></label>
       <div class="row full">
         <button class="btn primary" type="submit" id="leadSend">Invia richiesta</button>
-        <p class="form-note" id="leadNote" role="status">Userò i tuoi dati solo per risponderti.</p>
+        <p class="form-note" id="leadNote" role="status">Useremo i tuoi dati solo per risponderti.</p>
         <a class="btn" id="leadFallback" href="#" target="_blank" rel="noopener" hidden>Apri il modulo precompilato</a>
       </div>
     </form>
     <div class="sent" id="leadSent" hidden tabindex="-1">
       <h3>Richiesta inviata</h3>
-      <p>Grazie! Ti rispondo all'indirizzo che hai indicato, di solito entro un paio di giorni.</p>
+      <p>Grazie! Il nostro team ti risponderà all'indirizzo che hai indicato, di solito entro un paio di giorni.</p>
     </div>
   </section>
 
   <footer>
-    <span>Double OLED Gaming Monitor · firmware ESP32 + server Python</span>
+    <span>© 2026 Double OLED · Gaming Monitor per PC</span>
     <span style="font-family:var(--mono)">v1.0</span>
   </footer>
 </div>
