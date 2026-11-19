@@ -473,19 +473,20 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       </article>
       <article class="cap" data-i="3">
         <span class="num">03 · Encoder</span>
-        <h2>Una manopola, <em>quattro viste</em></h2>
+        <h2>Una manopola, <em>cinque viste</em></h2>
         <p>Un solo controllo, pensato per usarlo senza guardare: ruota per cambiare vista, premi per agire su quella corrente.</p>
         <ol class="vlist" id="vlist">
-          <li class="cur"><i>1/4</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
-          <li><i>2/4</i><b>TEMPS</b><span>premi: azzera i massimi</span></li>
-          <li><i>3/4</i><b>GRAPHS</b><span>premi: uso o temperatura</span></li>
-          <li><i>4/4</i><b>NETWORK</b><span>premi: riconnetti al PC</span></li>
+          <li class="cur"><i>1/5</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
+          <li><i>2/5</i><b>TEMPS</b><span>premi: azzera i massimi</span></li>
+          <li><i>3/5</i><b>GRAPHS</b><span>premi: uso o temperatura</span></li>
+          <li><i>4/5</i><b>NETWORK</b><span>premi: riconnetti al PC</span></li>
+          <li><i>5/5</i><b>AUDIO</b><span>premi: muto</span></li>
         </ol>
       </article>
       <article class="cap" data-i="4">
         <span class="num">04 · Dentro</span>
-        <h2>Tre componenti, <em>zero schede nel PC</em></h2>
-        <p>Un ESP32 con WiFi, due OLED SSD1306 e un encoder rotativo. Abbiamo dato a ogni display il suo bus I2C, così funzionano in parallelo. Il PC non va aperto: basta la rete di casa.</p>
+        <h2>Pochi componenti, <em>zero schede nel PC</em></h2>
+        <p>Un ESP32 con WiFi, due OLED SSD1306, un encoder rotativo e due slider per il volume del PC. Abbiamo dato a ogni display il suo bus I2C, così funzionano in parallelo. Il PC non va aperto: basta la rete di casa.</p>
       </article>
       <article class="cap" data-i="5">
         <span class="num">05 · Sulla tua scrivania</span>
@@ -672,7 +673,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
 
   // ---------- Porting di main.ino ----------
   const CPU_WARN = 70, CPU_CRIT = 85, GPU_WARN = 75, GPU_CRIT = 85, STALE = 8000, TOAST_MS = 1500;
-  const VIEWS = ["OVERVIEW", "TEMPS", "GRAPHS", "NETWORK"];
+  const VIEWS = ["OVERVIEW", "TEMPS", "GRAPHS", "NETWORK", "AUDIO"];
   const HIST = 128;
 
   function drawBar(d, x, y, w, h, pct) {
@@ -707,6 +708,14 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       if (i < level) d.fillRect(bx, y + 8 - h, 3, h); else d.fillRect(bx, y + 7, 3, 1);
     }
   }
+  // drawBatteryIcon(): nella demo la batteria e' fissa (non in carica)
+  function drawBatteryIcon(d, x, y, pct, now) {
+    if (pct < 10 && !blinkOn(now)) return;
+    d.drawRect(x, y, 14, 8);
+    d.fillRect(x + 14, y + 2, 2, 4, 1);
+    const w = Math.trunc((pct * 10 + 50) / 100);
+    if (w > 0) d.fillRect(x + 2, y + 2, w, 4, 1);
+  }
   function drawLabel(d, label) {
     d.s = 1; d.fillRect(0, 0, label.length * 6 + 3, 9, 1);
     d.c = 0; d.cursor(2, 1); d.print(label); d.c = 1;
@@ -721,6 +730,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       this.stats = null; this.hasData = false; this.ws = false; this.lastUpdate = 0;
       this.toastText = ""; this.toastUntil = 0;
       this.rssi = -58; this.host = "192.168.1.100"; this.port = 9000; this.ssid = "Casa-WiFi"; this.ip = "192.168.1.57";
+      this.batV = 3.95; this.batPct = 72;
+      this.pot = [62, 35]; this.mute = false; this.app = "DISCORD"; this.appRunning = true;
     }
     receive(s, now) { this.stats = s; this.pushHistory(); this.lastUpdate = now; this.hasData = true; this.ws = true; }
     pushHistory() {
@@ -745,6 +756,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       d1.printCenter("PC", 6); d1.printCenter(noData ? "NO DATA" : "OFFLINE", 26);
       d1.s = 1; d1.printCenter(this.host + ":" + this.port, 52);
       d2.clear(); d2.c = 1; d2.s = 1;
+      drawBatteryIcon(d2, 112, 0, this.batPct, now);
       d2.printCenter("Waiting for PC...", 8);
       drawWifiBars(d2, 40, 28, this.rssi);
       d2.cursor(60, 28); d2.print(this.rssi + " dBm");
@@ -784,10 +796,22 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       d1.cursor(0, 26); d1.print(this.ip);
       d1.cursor(0, 38); d1.print("RSSI " + this.rssi + " dBm");
       drawWifiBars(d1, 108, 38, this.rssi);
+      d1.cursor(0, 50); d1.print("BAT " + this.batV.toFixed(2) + "V " + this.batPct + "%");
       d2.clear(); d2.c = 1; drawLabel(d2, "PC LINK");
       d2.cursor(0, 14); d2.print(this.host + ":" + this.port);
       d2.cursor(0, 26); d2.print(this.ws ? "WS: connected" : "WS: DOWN");
       d2.cursor(0, 38); d2.print("Data: " + ((now - this.lastUpdate) / 1000).toFixed(1) + "s ago");
+    }
+    // drawVolumePage() / drawAudioPages(): livelli dei due slider
+    drawVolumePage(d, label, pct, mute, note) {
+      d.clear(); d.c = 1; drawLabel(d, label);
+      d.printRight(note, W, 1);
+      d.s = 4; d.printCenter(mute ? "MUTE" : pct + "%", 14); d.s = 1;
+      drawBar(d, 0, 52, W, 8, pct);
+    }
+    drawAudio(d1, d2) {
+      this.drawVolumePage(d1, "MASTER", this.pot[0], this.mute, "");
+      this.drawVolumePage(d2, this.app, this.pot[1], false, this.appRunning ? "" : "CLOSED");
     }
     drawOverview(d1, d2, now) {
       const s = this.stats;
@@ -799,6 +823,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       d2.clear(); d2.c = 1; d2.s = 1;
       drawWifiBars(d2, 0, 0, this.rssi);
       d2.cursor(20, 0); d2.print(this.rssi + "dBm");
+      drawBatteryIcon(d2, 72, 0, this.batPct, now);
       d2.printRight("PC", 112, 0);
       d2.fillCircle(122, 4, 3);
       drawMetric(d2, 12, "RAM", (s.ram.used_mb / 1024).toFixed(1) + "/" + (s.ram.total_mb / 1024).toFixed(1) + "GB", s.ram.usage_percent, 0, 0, now);
@@ -825,6 +850,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
           }
           break;
         case 3: this.drawNetwork(d1, d2, now); break;
+        case 4: this.drawAudio(d1, d2); break;
         default: this.drawOverview(d1, d2, now);
       }
       this.drawToast(d2, now);
@@ -1004,7 +1030,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       thState.textContent = lvl === 2 ? "Critico · lampeggia con !" : lvl === 1 ? "Attenzione · in negativo" : "Tutto normale";
       thState.style.color = lvl === 2 ? "var(--red)" : lvl === 1 ? "var(--amber)" : "";
     }
-    if (c > 2.5 && c < 3.5) view = Math.min(3, Math.floor(u3 * 4));
+    if (c > 2.5 && c < 3.5) view = Math.min(4, Math.floor(u3 * 5));
 
     knobTop.style.transform = `translateZ(18px) rotateZ(${(u3 * 270).toFixed(1)}deg)`;
     if (c > 2.5 && c < 3.5 && view !== shownView) {
@@ -1065,8 +1091,10 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       setup: m => { m.view = 2; m.graphShowTemp = true; } },
     { tag: "NETWORK", title: "Rete", text: "WiFi, IP e segnale dell'ESP32 a sinistra, collegamento al PC ed età dell'ultimo dato a destra.",
       setup: m => { m.view = 3; } },
+    { tag: "AUDIO", title: "Volume", text: "Due slider sul fianco: il primo regola il volume del PC, il secondo un programma a scelta, come Discord o Spotify. Premi per il muto.",
+      setup: m => { m.view = 4; } },
     { tag: "TOAST", title: "Cambio vista", text: "Ruotando l'encoder il nome della vista compare per un secondo e mezzo in fondo al display 2.",
-      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 2/4 >", NOW - 200); } }
+      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 2/5 >", NOW - 200); } }
   ];
   shots.forEach((s, i) => {
     const m = base(); s.setup(m);
