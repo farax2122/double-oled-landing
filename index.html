@@ -297,7 +297,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
   .caps { z-index: 2; }
   .rail { right: 8px; }
   .rail button span { display: none; }
-  .vlist li { grid-template-columns: 24px 96px 1fr; padding: 6px 10px; font-size: 13.5px; }
+  .vlist { gap: 2px; }
+  .vlist li { grid-template-columns: 24px 96px 1fr; padding: 4px 10px; font-size: 13.5px; }
   .flow { grid-template-columns: 1fr; }
   .wire { left: 37px; right: auto; top: 40px; bottom: 40px; width: 2px; height: auto; background: repeating-linear-gradient(180deg, #2a3643 0 6px, transparent 6px 12px); }
   .packet { display: none; }
@@ -473,14 +474,16 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       </article>
       <article class="cap" data-i="3">
         <span class="num">03 · Encoder</span>
-        <h2>Una manopola, <em>cinque viste</em></h2>
+        <h2>Una manopola, <em>sette viste</em></h2>
         <p>Un solo controllo, pensato per usarlo senza guardare: ruota per cambiare vista, premi per agire su quella corrente.</p>
         <ol class="vlist" id="vlist">
-          <li class="cur"><i>1/5</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
-          <li><i>2/5</i><b>TEMPS</b><span>premi: azzera i massimi</span></li>
-          <li><i>3/5</i><b>GRAPHS</b><span>premi: uso o temperatura</span></li>
-          <li><i>4/5</i><b>NETWORK</b><span>premi: riconnetti al PC</span></li>
-          <li><i>5/5</i><b>AUDIO</b><span>premi: muto</span></li>
+          <li class="cur"><i>1/7</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
+          <li><i>2/7</i><b>GAMING</b><span>premi: azzera il minimo</span></li>
+          <li><i>3/7</i><b>TEMPS</b><span>premi: azzera i massimi</span></li>
+          <li><i>4/7</i><b>GRAPHS</b><span>premi: uso o temperatura</span></li>
+          <li><i>5/7</i><b>NETWORK</b><span>premi: riconnetti al PC</span></li>
+          <li><i>6/7</i><b>AUDIO</b><span>premi: muto</span></li>
+          <li><i>7/7</i><b>CUSTOM</b><span>la scegli tu dal browser</span></li>
         </ol>
       </article>
       <article class="cap" data-i="4">
@@ -521,7 +524,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     </div>
     <div class="flow">
       <div class="wire"><span class="packet"></span></div>
-      <div class="node"><div class="ic">PC</div><h3>Il nostro software legge le metriche</h3><p>Un leggero programma per Windows raccoglie CPU, RAM e uptime. La GPU arriva da <code>nvidia-smi</code>, la temperatura CPU da LibreHardwareMonitor.</p></div>
+      <div class="node"><div class="ic">PC</div><h3>Il nostro software legge le metriche</h3><p>Un leggero programma per Windows raccoglie CPU, RAM e uptime. La GPU arriva da <code>nvidia-smi</code>, la temperatura CPU da LibreHardwareMonitor, gli FPS dei giochi da RivaTuner.</p></div>
       <div class="node"><div class="ic">WS</div><h3>Le invia sulla rete di casa</h3><p>Un messaggio JSON su WebSocket, porta 9000. Se il PC si riavvia, l'ESP32 si ricollega da solo.</p></div>
       <div class="node"><div class="ic">ESP</div><h3>I display si aggiornano</h3><p>Ridisegno a ogni messaggio e ogni 500 ms, così gli allarmi lampeggiano a ritmo costante.</p></div>
     </div>
@@ -530,7 +533,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
   <span class="k">"cpu"</span>:    { <span class="k">"usage"</span>: 45.2, <span class="k">"temperature"</span>: 65.5, <span class="k">"frequency"</span>: 3400 },
   <span class="k">"gpu"</span>:    { <span class="k">"usage"</span>: 78.5, <span class="k">"temperature"</span>: 82.0, <span class="k">"vram_used_mb"</span>: 4096 },
   <span class="k">"ram"</span>:    { <span class="k">"usage_percent"</span>: 62.3, <span class="k">"used_mb"</span>: 10207, <span class="k">"total_mb"</span>: 16384 },
-  <span class="k">"system"</span>: { <span class="k">"uptime_seconds"</span>: 86400 }
+  <span class="k">"system"</span>: { <span class="k">"uptime_seconds"</span>: 86400 },
+  <span class="k">"game"</span>:   { <span class="k">"active"</span>: true, <span class="k">"fps"</span>: 144, <span class="k">"frametime_ms"</span>: 6.9 }
 }</pre>
   </section>
 
@@ -673,7 +677,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
 
   // ---------- Porting di main.ino ----------
   const CPU_WARN = 70, CPU_CRIT = 85, GPU_WARN = 75, GPU_CRIT = 85, STALE = 8000, TOAST_MS = 1500;
-  const VIEWS = ["OVERVIEW", "TEMPS", "GRAPHS", "NETWORK", "AUDIO"];
+  const VIEWS = ["OVERVIEW", "TEMPS", "GRAPHS", "NETWORK", "AUDIO", "CUSTOM", "GAMING"];
+  const ORDER = [0, 6, 1, 2, 3, 4, 5];
   const HIST = 128;
 
   function drawBar(d, x, y, w, h, pct) {
@@ -721,6 +726,63 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     d.c = 0; d.cursor(2, 1); d.print(label); d.c = 1;
   }
 
+  // ---------- Porting di pc_client/layout.py ----------
+  const METRICS = {
+    cpu_usage: ["CPU usage", "CPU", s => s.cpu.usage, "%", 100],
+    cpu_temp: ["CPU temperature", "CPU T", s => s.cpu.temperature, "C", 100],
+    gpu_usage: ["GPU usage", "GPU", s => s.gpu.usage, "%", 100],
+    gpu_temp: ["GPU temperature", "GPU T", s => s.gpu.temperature, "C", 100],
+    ram_usage: ["RAM usage", "RAM", s => s.ram.usage_percent, "%", 100],
+    fps: ["Game FPS", "FPS", s => s.game && s.game.active ? s.game.fps : null, "", 240],
+    frametime: ["Frame time", "FT", s => s.game && s.game.active ? s.game.frametime_ms : null, "ms", 50]
+  };
+  const tw = (str, size) => Math.max(0, String(str).length * 6 * size - size);
+  const fitSize = (str, width, max) => { for (let n = max; n > 1; n--) if (tw(str, n) <= width) return n; return 1; };
+  function metricText(key, s) {
+    const [, , read, unit] = METRICS[key];
+    const v = read(s);
+    if (v == null) return "--";
+    return unit === "GB" || unit === "ms" ? v.toFixed(1) + unit : rnd(v) + unit;
+  }
+  const metricRatio = (key, s) => clamp((METRICS[key][2](s) || 0) / METRICS[key][4], 0, 1);
+  // Come Frame.text di layout.py: niente a capo a fine riga (print() di GFX andrebbe a capo)
+  function text(d, x, y, str, size = 1) { d.s = size; for (const ch of String(str)) { d.glyph(x, y, ch); x += 6 * size; } d.s = 1; }
+  const textRight = (d, xr, y, str, size = 1) => text(d, xr - tw(str, size), y, str, size);
+  function lbar(d, x, y, w, h, ratio) { d.drawRect(x, y, w, h); d.fillRect(x + 2, y + 2, rnd((w - 4) * ratio), h - 4); }
+  const LAYOUT_DRAW = {
+    two(d, keys, s) {
+      keys.forEach((key, i) => {
+        const y = i * 33, v = metricText(key, s);
+        text(d, 0, y + 4, tw(METRICS[key][0], 1) <= 70 ? METRICS[key][0].toUpperCase() : METRICS[key][1]);
+        textRight(d, W, y, v, fitSize(v, 52, 2));
+        lbar(d, 0, y + 19, W, 11, metricRatio(key, s));
+      });
+      d.fillRect(0, 31, W, 1);
+    },
+    four(d, keys, s) {
+      keys.forEach((key, i) => {
+        const x = (i % 2) * 65, y = Math.floor(i / 2) * 33, v = metricText(key, s);
+        text(d, x + 1, y + 2, METRICS[key][1]);
+        text(d, x + 1, y + 14, v, fitSize(v, 61, 2));
+      });
+      d.fillRect(63, 0, 1, H); d.fillRect(0, 31, W, 1);
+    },
+    graph(d, keys, s, m) {
+      const key = keys[0];
+      text(d, 0, 0, METRICS[key][0].toUpperCase());
+      textRight(d, W, 0, metricText(key, s));
+      d.drawRect(0, 10, W, H - 10);
+      const shown = Math.min(m.count, W - 2);
+      let prev = null;
+      for (let i = 0; i < shown; i++) {
+        const r = m.hFps[(m.head - shown + i + HIST) % HIST];
+        const p = [1 + i, H - 2 - rnd(r * (H - 13))];
+        if (prev) d.line(prev[0], prev[1], p[0], p[1]);
+        prev = p;
+      }
+    }
+  };
+
   class Monitor {
     constructor() {
       this.view = 0; this.graphShowTemp = false; this.maxCpu = 0; this.maxGpu = 0;
@@ -732,6 +794,9 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       this.rssi = -58; this.host = "192.168.1.100"; this.port = 9000; this.ssid = "Casa-WiFi"; this.ip = "192.168.1.57";
       this.batV = 3.95; this.batPct = 72;
       this.pot = [62, 35]; this.mute = false; this.app = "DISCORD"; this.appRunning = true;
+      this.hFps = new Float32Array(HIST); this.minFps = 0;
+      // Layout della vista CUSTOM scelto nella pagina /settings (qui fisso per la demo)
+      this.custom = [{ layout: "four", metrics: ["cpu_usage", "gpu_usage", "fps", "ram_usage"] }, { layout: "graph", metrics: ["fps"] }];
     }
     receive(s, now) { this.stats = s; this.pushHistory(); this.lastUpdate = now; this.hasData = true; this.ws = true; }
     pushHistory() {
@@ -740,6 +805,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       this.hCpuTemp[h] = clamp(rnd(s.cpu.temperature), 0, 255);
       this.hGpuUse[h] = clamp(rnd(s.gpu.usage), 0, 100);
       this.hGpuTemp[h] = clamp(rnd(s.gpu.temperature), 0, 255);
+      this.hFps[h] = metricRatio("fps", s);
+      if (s.game && s.game.active && (this.minFps === 0 || s.game.fps < this.minFps)) this.minFps = s.game.fps;
       this.head = (h + 1) % HIST;
       if (this.count < HIST) this.count++;
       if (s.cpu.temperature > this.maxCpu) this.maxCpu = s.cpu.temperature;
@@ -813,6 +880,30 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       this.drawVolumePage(d1, "MASTER", this.pot[0], this.mute, "");
       this.drawVolumePage(d2, this.app, this.pot[1], false, this.appRunning ? "" : "CLOSED");
     }
+    // drawGamingPages(): FPS grandi, tempo per frame e minimo; GPU e CPU sul display 2
+    drawGaming(d1, d2, now) {
+      const s = this.stats, g = s.game;
+      d1.clear(); d1.c = 1; drawLabel(d1, "FPS");
+      if (!g || !g.active) {
+        d1.s = 2; d1.printCenter("NO GAME", 18); d1.s = 1; d1.printCenter("Start a game", 44);
+      } else {
+        d1.printRight(g.app, W, 1);
+        d1.s = 4; d1.printCenter(String(g.fps), 14); d1.s = 1;
+        d1.cursor(0, 56); d1.print(g.frametime_ms.toFixed(1) + "ms");
+        d1.printRight("MIN " + this.minFps, W, 56);
+      }
+      d2.clear(); d2.c = 1;
+      drawMetric(d2, 0, "GPU", (s.gpu.vram_used_mb / 1024).toFixed(1) + "GB", s.gpu.usage, s.gpu.temperature, tempLevel(s.gpu.temperature, GPU_WARN, GPU_CRIT), now);
+      drawMetric(d2, 33, "CPU", s.cpu.frequency + "MHz", s.cpu.usage, s.cpu.temperature, tempLevel(s.cpu.temperature, CPU_WARN, CPU_CRIT), now);
+    }
+    // Vista CUSTOM: il firmware copia i frame disegnati dal PC (layout.py), qui disegnati nel browser
+    drawCustom(d1, d2) {
+      [d1, d2].forEach((d, i) => {
+        d.clear(); d.c = 1; d.s = 1;
+        const lay = this.custom[i];
+        LAYOUT_DRAW[lay.layout](d, lay.metrics, this.stats, this);
+      });
+    }
     drawOverview(d1, d2, now) {
       const s = this.stats;
       const cpuLevel = tempLevel(s.cpu.temperature, CPU_WARN, CPU_CRIT);
@@ -851,6 +942,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
           break;
         case 3: this.drawNetwork(d1, d2, now); break;
         case 4: this.drawAudio(d1, d2); break;
+        case 5: this.drawCustom(d1, d2); break;
+        case 6: this.drawGaming(d1, d2, now); break;
         default: this.drawOverview(d1, d2, now);
       }
       this.drawToast(d2, now);
@@ -881,7 +974,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       cpu: { usage: r1(tri(t, 20, 5, 100)), temperature: r1(tri(t, 60, 40, 95)), frequency: Math.trunc(tri(t, 15, 2000, 4800)) },
       gpu: { usage: r1(tri(t + 7, 25, 0, 100)), temperature: r1(tri(t + 30, 60, 45, 95)), vram_used_mb: Math.trunc(tri(t, 40, 500, 8000)) },
       ram: { usage_percent: r1(ram * 100 / 16384), used_mb: ram, total_mb: 16384 },
-      system: { uptime_seconds: Math.trunc(t - T0) + 93784 }
+      system: { uptime_seconds: Math.trunc(t - T0) + 93784 },
+      game: { active: true, app: "SHOOTER", fps: Math.trunc(tri(t, 30, 110, 165)), frametime_ms: r1(1000 / tri(t, 30, 110, 165)) }
     };
   }
   function prefill(m, tEnd, now) { for (let i = HIST - 1; i >= 0; i--) m.receive(mock(tEnd - i * 2.5), now); }
@@ -1019,7 +1113,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       return;
     }
     const saved = live.stats;
-    let view = 0;
+    let pos = 0;
     const u2 = local(c, 2), u3 = local(c, 3);
 
     if (c > 1.5 && c < 2.5) {
@@ -1030,17 +1124,17 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       thState.textContent = lvl === 2 ? "Critico · lampeggia con !" : lvl === 1 ? "Attenzione · in negativo" : "Tutto normale";
       thState.style.color = lvl === 2 ? "var(--red)" : lvl === 1 ? "var(--amber)" : "";
     }
-    if (c > 2.5 && c < 3.5) view = Math.min(4, Math.floor(u3 * 5));
+    if (c > 2.5 && c < 3.5) pos = Math.min(ORDER.length - 1, Math.floor(u3 * ORDER.length));
 
     knobTop.style.transform = `translateZ(18px) rotateZ(${(u3 * 270).toFixed(1)}deg)`;
-    if (c > 2.5 && c < 3.5 && view !== shownView) {
-      shownView = view;
-      live.showToast(`< ${VIEWS[view]} ${view + 1}/${VIEWS.length} >`, now);
-      vItems.forEach((li, i) => li.classList.toggle("cur", i === view));
+    if (c > 2.5 && c < 3.5 && pos !== shownView) {
+      shownView = pos;
+      live.showToast(`< ${VIEWS[ORDER[pos]]} ${pos + 1}/${ORDER.length} >`, now);
+      vItems.forEach((li, i) => li.classList.toggle("cur", i === pos));
     }
     if (!(c > 2.5 && c < 3.5)) shownView = -1;
 
-    live.view = view;
+    live.view = ORDER[pos];
     live.draw(g1, g2, now);
     live.stats = saved;
     blit(g1, scr1); blit(g2, scr2);
@@ -1083,6 +1177,8 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       setup: m => { m.stats = snap({ usage: 45.2, temperature: 62.4, frequency: 3400 }, { usage: 78.5, temperature: 71.0, vram_used_mb: 4096 }, 10207); } },
     { tag: "OVERVIEW", title: "Allarme temperatura", text: "CPU sopra 70 °C in negativo, GPU oltre 85 °C con il \"!\" che lampeggia ogni mezzo secondo.",
       setup: m => { m.stats = snap({ usage: 97.0, temperature: 74.2, frequency: 4700 }, { usage: 99.0, temperature: 88.3, vram_used_mb: 7420 }, 13100); } },
+    { tag: "GAMING", title: "Gaming", text: "FPS del gioco letti da RivaTuner, tempo per frame e minimo della partita. Sul secondo display GPU e CPU. Premi per azzerare il minimo.",
+      setup: m => { m.view = 6; m.stats = { ...snap({ usage: 48, temperature: 68.5, frequency: 4600 }, { usage: 97, temperature: 72.0, vram_used_mb: 7420 }, 11800), game: { active: true, app: "SHOOTER", fps: 144, frametime_ms: 6.9 } }; m.minFps = 118; } },
     { tag: "TEMPS", title: "Temperature", text: "Valore a tutto schermo, massimo dall'accensione e barra da 20 a 100 °C. Premi per azzerare i massimi.",
       setup: m => { m.view = 1; m.stats = snap({ usage: 38, temperature: 66.4, frequency: 3900 }, { usage: 99, temperature: 88.2, vram_used_mb: 7420 }, 9800); } },
     { tag: "GRAPHS", title: "Grafici di utilizzo", text: "Gli ultimi 128 campioni, circa 5 minuti. La linea tratteggiata segna il 50%.",
@@ -1093,8 +1189,10 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       setup: m => { m.view = 3; } },
     { tag: "AUDIO", title: "Volume", text: "Due slider sul fianco: il primo regola il volume del PC, il secondo un programma a scelta, come Discord o Spotify. Premi per il muto.",
       setup: m => { m.view = 4; } },
+    { tag: "CUSTOM", title: "Su misura", text: "Scegli dal browser, anche dal telefono, layout e dati di ogni schermo: valori grandi, riquadri, liste, grafici o una tua immagine.",
+      setup: m => { m.view = 5; } },
     { tag: "TOAST", title: "Cambio vista", text: "Ruotando l'encoder il nome della vista compare per un secondo e mezzo in fondo al display 2.",
-      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 2/5 >", NOW - 200); } }
+      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 3/7 >", NOW - 200); } }
   ];
   shots.forEach((s, i) => {
     const m = base(); s.setup(m);
