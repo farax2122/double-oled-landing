@@ -475,7 +475,7 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       <article class="cap" data-i="3">
         <span class="num">03 · Encoder</span>
         <h2>Una manopola, <em>sette viste</em></h2>
-        <p>Un solo controllo, pensato per usarlo senza guardare: ruota per cambiare vista, premi per agire su quella corrente.</p>
+        <p>Un solo controllo, pensato per usarlo senza guardare: ruota per cambiare vista, premi per agire su quella corrente, tieni premuto 2 secondi per spegnerlo. Una pressione lo riaccende.</p>
         <ol class="vlist" id="vlist">
           <li class="cur"><i>1/7</i><b>OVERVIEW</b><span>premi: azzera gli stats</span></li>
           <li><i>2/7</i><b>GAMING</b><span>premi: azzera il minimo</span></li>
@@ -923,7 +923,13 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
       d2.s = 1; d2.cursor(0, 52);
       d2.print(days > 0 ? `UP ${days}d ${p2(hours)}h ${p2(mins)}m` : `UP ${p2(hours)}h ${p2(mins)}m`);
     }
+    // powerOff(): saluto prima di spegnere display e WiFi
+    drawBye(d1, d2) {
+      d1.clear(); d1.c = 1; d1.s = 2; d1.printCenter("BYE", 24); d1.s = 1;
+      d2.clear();
+    }
     draw(d1, d2, now) {
+      if (this.bye) { this.drawBye(d1, d2); return; }
       if (!this.isLive(now)) { this.drawOffline(d1, d2, this.ws && !this.hasData, now); return; }
       const s = this.stats;
       switch (this.view) {
@@ -1192,7 +1198,9 @@ footer { padding-block: 28px 48px; border-top: 1px solid var(--line); display: f
     { tag: "CUSTOM", title: "Su misura", text: "Scegli dal browser, anche dal telefono, layout e dati di ogni schermo: valori grandi, riquadri, liste, grafici o una tua immagine.",
       setup: m => { m.view = 5; } },
     { tag: "TOAST", title: "Cambio vista", text: "Ruotando l'encoder il nome della vista compare per un secondo e mezzo in fondo al display 2.",
-      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 3/7 >", NOW - 200); } }
+      setup: m => { m.view = 1; m.stats = snap({ usage: 22, temperature: 54.6, frequency: 3100 }, { usage: 41, temperature: 61.0, vram_used_mb: 3100 }, 8700); m.maxCpu = 81; m.maxGpu = 79; m.showToast("< TEMPS 3/7 >", NOW - 200); } },
+    { tag: "POWER", title: "Spegnimento", text: "Tieni premuta la manopola per 2 secondi: un saluto, poi display e WiFi si spengono. Una pressione lo riaccende e si ricollega da solo al PC.",
+      setup: m => { m.bye = true; } }
   ];
   shots.forEach((s, i) => {
     const m = base(); s.setup(m);
